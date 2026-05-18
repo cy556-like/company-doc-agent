@@ -16,10 +16,13 @@ from app.config import settings
 
 def get_embeddings():
     """获取 Embedding 模型（使用 OpenAI 兼容接口）"""
+    # 智谱 GLM 用 embedding-3，OpenAI 用 text-embedding-v3，DeepSeek 用 text-embedding-v3
+    # 通过 .env 中的 EMBEDDING_MODEL 配置
+    embedding_model = getattr(settings, 'EMBEDDING_MODEL', 'embedding-3')
     return OpenAIEmbeddings(
         api_key=settings.LLM_API_KEY,
         base_url=settings.LLM_BASE_URL,
-        model="text-embedding-v3",  # DeepSeek / OpenAI 通用
+        model=embedding_model,
     )
 
 
