@@ -21,7 +21,7 @@ class Settings:
 
     # 应用配置
     APP_HOST: str = os.getenv("APP_HOST", "0.0.0.0")
-    APP_PORT: int = int(os.getenv("APP_PORT", "8000"))
+    APP_PORT: int = int(os.getenv("APP_PORT", "7860"))
 
     # 数据目录
     DATA_DIR: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
