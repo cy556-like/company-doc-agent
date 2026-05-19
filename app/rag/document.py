@@ -1,0 +1,141 @@
+"""
+文档处理与向量化模块 (RAG)
+负责：加载文档 → 分块 → 向量化 → 存入 ChromaDB → 检索
+"""
+import os
+import json
+from typing import Optional
+
+from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+
+from app.config import settings
+
+
+def get_embeddings():
+    """获取 Embedding 模型（使用 OpenAI 兼容接口）"""
+    # 智谱 GLM 用 embedding-3，OpenAI 用 text-embedding-v3，DeepSeek 用 text-embedding-v3
+    # 通过 .env 中的 EMBEDDING_MODEL 配置
+    embedding_model = getattr(settings, 'EMBEDDING_MODEL', 'embedding-3')
+    return OpenAIEmbeddings(
+        api_key=settings.LLM_API_KEY,
+        base_url=settings.LLM_BASE_URL,
+        model=embedding_model,
+    )
+
+
+def get_vector_store():
+    """获取 ChromaDB 向量数据库实例"""
+    embeddings = get_embeddings()
+    return Chroma(
+        persist_directory=settings.CHROMA_DIR,
+        embedding_function=embeddings,
+    )
+
+
+def load_document(file_path: str) -> list:
+    """
+    根据文件类型加载文档
+    支持：PDF、TXT、DOCX
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+
+    if ext == ".pdf":
+        loader = PyPDFLoader(file_path)
+    elif ext == ".txt":
+        loader = TextLoader(file_path, encoding="utf-8")
+    elif ext == ".docx":
+        loader = Docx2txtLoader(file_path)
+    else:
+        raise ValueError(f"不支持的文件格式: {ext}，仅支持 PDF/TXT/DOCX")
+
+    return loader.load()
+
+
+def split_documents(docs: list, chunk_size: int = 500, chunk_overlap: int = 100) -> list:
+    """
+    文档分块
+    - chunk_size: 每块最大字符数
+    - chunk_overlap: 块间重叠字符数（保证上下文连续性）
+    """
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", "。", "；", "，", " ", ""],
+    )
+    return splitter.split_documents(docs)
+
+
+def index_document(file_path: str, filename: str = None) -> dict:
+    """
+    完整的文档索引流程：加载 → 分块 → 向量化 → 存储
+
+    Returns:
+        dict: 包含分块数量和状态信息
+    """
+    if filename is None:
+        filename = os.path.basename(file_path)
+
+    # 1. 加载文档
+    docs = load_document(file_path)
+
+    # 2. 给文档添加元数据
+    for doc in docs:
+        doc.metadata["source_file"] = filename
+
+    # 3. 分块
+    chunks = split_documents(docs)
+
+    # 4. 向量化并存储
+    vector_store = get_vector_store()
+    vector_store.add_documents(chunks)
+
+    return {
+        "filename": filename,
+        "chunks": len(chunks),
+        "status": "success",
+        "message": f"文档 {filename} 已成功索引，共 {len(chunks)} 个分块",
+    }
+
+
+def search_documents(query: str, top_k: int = 3) -> list[dict]:
+    """
+    在向量数据库中检索与查询最相关的文档片段
+
+    Args:
+        query: 用户查询
+        top_k: 返回最相关的 K 个结果
+
+    Returns:
+        list[dict]: 检索结果列表
+    """
+    vector_store = get_vector_store()
+    results = vector_store.similarity_search_with_score(query, k=top_k)
+
+    formatted = []
+    for doc, score in results:
+        formatted.append({
+            "content": doc.page_content,
+            "source": doc.metadata.get("source_file", "未知来源"),
+            "relevance_score": round(1 - score, 4),  # 转换为相似度
+        })
+
+    return formatted
+
+
+def list_indexed_documents() -> list[str]:
+    """列出知识库中所有已索引的文档"""
+    vector_store = get_vector_store()
+    # 从 ChromaDB 的元数据中提取所有文档名
+    try:
+        collection = vector_store._collection
+        all_docs = collection.get(include=["metadatas"])
+        sources = set()
+        for meta in all_docs["metadatas"]:
+            if meta and "source_file" in meta:
+                sources.add(meta["source_file"])
+        return sorted(list(sources))
+    except Exception:
+        return []
