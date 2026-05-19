@@ -1,3 +1,11 @@
+---
+title: 企业文档智能助手
+emoji: 🤖
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
 # 🤖 企业文档智能助手 Agent
 
 > 基于 LangChain + LangGraph 的 ReAct Agent，支持文档问答、员工查询、文档搜索
