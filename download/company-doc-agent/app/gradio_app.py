@@ -58,16 +58,13 @@ def gradio_list_docs() -> str:
 def create_gradio_app():
     """创建 Gradio 界面"""
 
-    with gr.Blocks(
-        title="企业文档智能助手",
-        theme=gr.themes.Soft(),
-    ) as demo:
+    with gr.Blocks(title="企业文档智能助手") as demo:
 
         # ===== 标题区 =====
         gr.Markdown(
             """
             # 企业文档智能助手
-            > 基于 LangChain + LangGraph 的 ReAct Agent，支持文档问答、员工查询、文档搜索
+            > 基于 LangChain + LangGraph 的 ReAct Agent
 
             你可以问我：公司制度、员工信息、文档内容等任何问题
             """
@@ -76,10 +73,7 @@ def create_gradio_app():
         with gr.Row():
             # ===== 左侧：聊天区 =====
             with gr.Column(scale=3):
-                chatbot = gr.Chatbot(
-                    label="对话",
-                    bubble_full_width=False,
-                )
+                chatbot = gr.Chatbot(label="对话", height=500)
 
                 with gr.Row():
                     msg_input = gr.Textbox(
