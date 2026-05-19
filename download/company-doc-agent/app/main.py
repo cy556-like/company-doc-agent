@@ -66,20 +66,22 @@ if __name__ == "__main__":
     os.makedirs(settings.DOCUMENTS_DIR, exist_ok=True)
     os.makedirs(settings.CHROMA_DIR, exist_ok=True)
 
-    # 创建 Gradio 界面
+    # 创建 Gradio 界面并挂载到 FastAPI
     from app.gradio_app import create_gradio_app
+    import gradio as gr
+
     demo = create_gradio_app()
+    app = gr.mount_gradio_app(app, demo, path="/ui")
 
     print("=" * 50)
     print("企业文档智能助手 Agent 启动中...")
-    print(f"  API 地址: http://{settings.APP_HOST}:{settings.APP_PORT}")
-    print(f"  API 文档: http://{settings.APP_HOST}:{settings.APP_PORT}/docs")
-    print(f"  Gradio 界面: http://{settings.APP_HOST}:{settings.APP_PORT}")
+    print(f"  API 地址: http://localhost:{settings.APP_PORT}")
+    print(f"  API 文档: http://localhost:{settings.APP_PORT}/docs")
+    print(f"  Gradio 界面: http://localhost:{settings.APP_PORT}/ui")
     print("=" * 50)
 
-    # Gradio 直接启动，内部集成 FastAPI
-    demo.launch(
-        server_name=settings.APP_HOST,
-        server_port=settings.APP_PORT,
-        app=app,  # 将 FastAPI 挂载到 Gradio 上
+    uvicorn.run(
+        app,
+        host=settings.APP_HOST,
+        port=settings.APP_PORT,
     )
