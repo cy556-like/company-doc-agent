@@ -73,7 +73,7 @@ def create_gradio_app():
         with gr.Row():
             # ===== 左侧：聊天区 =====
             with gr.Column(scale=3):
-                chatbot = gr.Chatbot(label="对话", height=500)
+                chatbot = gr.Chatbot(label="对话", height=500, type="messages")
 
                 with gr.Row():
                     msg_input = gr.Textbox(
@@ -107,10 +107,11 @@ def create_gradio_app():
 
         # ===== 绑定事件 =====
 
-        # 发送消息
+        # 发送消息（Gradio 6.x 使用 messages 格式）
         def send_message(message, history, sid):
             response = gradio_chat(message, history, sid)
-            history.append((message, response))
+            history.append({"role": "user", "content": message})
+            history.append({"role": "assistant", "content": response})
             return "", history
 
         msg_input.submit(
