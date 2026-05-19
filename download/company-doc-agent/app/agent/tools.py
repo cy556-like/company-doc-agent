@@ -1,6 +1,6 @@
 """
 Agent 工具定义模块
-每个工具 = Agent 的一个"能力"
+每个工具 = Agent 的一个「能力」
 Agent 会根据用户问题自动选择调用哪个工具
 """
 import json
@@ -37,7 +37,7 @@ def search_documents_tool(query: str) -> str:
 
 @tool
 def lookup_employee_tool(name: str = "", department: str = "") -> str:
-    """查询公司员工信息，包括姓名、部门、职位、邮箱等。当用户问"某某在哪个部门"、"某部门有哪些人"等问题时使用。
+    """查询公司员工信息，包括姓名、部门、职位、邮箱等。当用户问「某某在哪个部门」、「某部门有哪些人」等问题时使用。
 
     Args:
         name: 员工姓名（可选，模糊匹配）
@@ -66,7 +66,7 @@ def lookup_employee_tool(name: str = "", department: str = "") -> str:
 
     output = f"找到 {len(results)} 位员工：\n\n"
     for e in results:
-        output += f"👤 {e['name']} | 部门: {e['department']} | 职位: {e['position']} | 邮箱: {e['email']}\n"
+        output += f"{e['name']} | 部门: {e['department']} | 职位: {e['position']} | 邮箱: {e['email']}\n"
         if e.get("phone"):
             output += f"   电话: {e['phone']}\n"
 
