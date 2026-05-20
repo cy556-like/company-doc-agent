@@ -9,12 +9,20 @@ load_dotenv()
 
 # 可用的 LLM 模型列表
 AVAILABLE_MODELS = [
+    # GLM-5 系列（最新）
+    {"id": "glm-5.1", "name": "GLM-5.1", "desc": "最新旗舰，Coding对齐Claude Opus 4.6"},
+    {"id": "glm-5-turbo", "name": "GLM-5-Turbo", "desc": "高智能基座，Agent能力SOTA"},
+    {"id": "glm-5", "name": "GLM-5", "desc": "高智能基座，编程对齐Claude Opus 4.5"},
+    # GLM-4.7 系列
+    {"id": "glm-4.7", "name": "GLM-4.7", "desc": "高性能，综合能力提升"},
+    {"id": "glm-4.7-flash", "name": "GLM-4.7-Flash", "desc": "快速版，性价比高"},
+    # GLM-4 系列（经典）
+    {"id": "glm-4-plus", "name": "GLM-4-Plus", "desc": "高性能，复杂任务首选"},
+    {"id": "glm-4-long", "name": "GLM-4-Long", "desc": "超长上下文，支持128K"},
     {"id": "glm-4-flash", "name": "GLM-4-Flash", "desc": "最快，适合日常对话"},
     {"id": "glm-4-air", "name": "GLM-4-Air", "desc": "均衡，速度与质量兼顾"},
     {"id": "glm-4-air-0111", "name": "GLM-4-Air-0111", "desc": "Air升级版，效果更好"},
-    {"id": "glm-4-plus", "name": "GLM-4-Plus", "desc": "高性能，复杂任务首选"},
-    {"id": "glm-4-long", "name": "GLM-4-Long", "desc": "超长上下文，支持128K"},
-    {"id": "glm-4", "name": "GLM-4", "desc": "旗舰模型，最强能力"},
+    {"id": "glm-4", "name": "GLM-4", "desc": "经典旗舰模型"},
 ]
 
 
