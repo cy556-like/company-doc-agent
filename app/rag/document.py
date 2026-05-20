@@ -1,26 +1,30 @@
 """
 文档处理与向量化模块 (RAG)
 负责：加载文档 → 分块 → 向量化 → 存入 ChromaDB → 检索
+优化：单例缓存 Embeddings 和 VectorStore 实例，避免重复创建
 """
 import os
-import json
 from typing import Optional
 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+
+try:
+    from langchain_chroma import Chroma
+except ImportError:
+    from langchain_community.vectorstores import Chroma
 
 from app.config import settings
 
 
-# ===== 缓存向量数据库连接，避免每次搜索都重新创建 =====
+# ===== 单例缓存 =====
 _vector_store = None
 _embeddings = None
 
 
 def get_embeddings():
-    """获取 Embedding 模型（使用 OpenAI 兼容接口，单例缓存）"""
+    """获取 Embedding 模型（单例缓存，避免重复创建）"""
     global _embeddings
     if _embeddings is None:
         embedding_model = getattr(settings, 'EMBEDDING_MODEL', 'embedding-3')
@@ -33,7 +37,7 @@ def get_embeddings():
 
 
 def get_vector_store():
-    """获取 ChromaDB 向量数据库实例（单例缓存）"""
+    """获取 ChromaDB 向量数据库实例（单例缓存，避免重复创建）"""
     global _vector_store
     if _vector_store is None:
         embeddings = get_embeddings()
@@ -61,6 +65,21 @@ def load_document(file_path: str) -> list:
         raise ValueError(f"不支持的文件格式: {ext}，仅支持 PDF/TXT/DOCX")
 
     return loader.load()
+
+
+def read_document_content(file_path: str) -> str:
+    """
+    读取文档的纯文本内容（用于文档修改功能）
+
+    Args:
+        file_path: 文档路径
+
+    Returns:
+        str: 文档纯文本内容
+    """
+    docs = load_document(file_path)
+    content = "\n\n".join([doc.page_content for doc in docs])
+    return content
 
 
 def split_documents(docs: list, chunk_size: int = 500, chunk_overlap: int = 100) -> list:
@@ -148,25 +167,3 @@ def list_indexed_documents() -> list[str]:
         return sorted(list(sources))
     except Exception:
         return []
-
-def read_document_content(file_path: str) -> str:
-    """
-    读取文档的文本内容
-    支持：PDF、TXT、DOCX
-    """
-    ext = os.path.splitext(file_path)[1].lower()
-
-    if ext == ".pdf":
-        loader = PyPDFLoader(file_path)
-        docs = loader.load()
-        return "\n\n".join([doc.page_content for doc in docs])
-    elif ext == ".txt":
-        loader = TextLoader(file_path, encoding="utf-8")
-        docs = loader.load()
-        return "\n\n".join([doc.page_content for doc in docs])
-    elif ext == ".docx":
-        loader = Docx2txtLoader(file_path)
-        docs = loader.load()
-        return "\n\n".join([doc.page_content for doc in docs])
-    else:
-        raise ValueError(f"不支持的文件格式: {ext}")

@@ -120,7 +120,7 @@ def gradio_list_docs() -> str:
 
 
 def create_gradio_app():
-    with gr.Blocks(title="企业文档智能助手") as demo:
+    with gr.Blocks(title="企业文档智能助手", theme=gr.themes.Soft()) as demo:
 
         # 用 State 记录当前登录用户
         current_user = gr.State(None)

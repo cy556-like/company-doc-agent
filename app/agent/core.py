@@ -2,12 +2,13 @@
 Agent 核心逻辑模块
 使用 LangGraph 构建 ReAct 模式的 Agent
 ReAct = Reasoning(推理) + Acting(行动) → 边思考边行动
+优化：限制历史消息数量 + 限制最大工具调用轮数
 """
 from typing import Annotated
 from typing_extensions import TypedDict
 
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -16,6 +17,12 @@ from app.config import settings
 from app.agent.tools import ALL_TOOLS
 from app.agent.prompts import SYSTEM_PROMPT
 from app.memory.manager import get_session_history
+
+# 最大历史消息数量（加速推理，避免上下文过长）
+MAX_HISTORY_MESSAGES = 10
+
+# 最大工具调用轮数（防止无限循环）
+MAX_TOOL_ROUNDS = 3
 
 
 # ===== 1. 定义 Agent 状态 =====
@@ -44,7 +51,7 @@ def create_agent_graph():
     构建 LangGraph Agent 执行图
 
     流程：用户输入 → LLM 思考 → 是否调用工具？
-           ├─ 是 → 执行工具 → 回到 LLM 思考（循环）
+           ├─ 是 → 执行工具 → 回到 LLM 思考（循环，最多3轮）
            └─ 否 → 输出回答 → 结束
     """
     llm = create_llm()
@@ -64,6 +71,26 @@ def create_agent_graph():
     # 节点2: 工具执行节点（使用 LangGraph 内置的 ToolNode）
     tool_node = ToolNode(ALL_TOOLS)
 
+    # 条件边：判断是否需要继续调用工具（限制最大轮数）
+    def should_continue(state: AgentState):
+        """
+        判断是否需要继续调用工具
+        如果工具调用轮数超过 MAX_TOOL_ROUNDS，则强制结束
+        """
+        messages = state["messages"]
+        # 统计 ToolMessage 的数量，每轮工具调用会产生一个 ToolMessage
+        tool_message_count = sum(1 for m in messages if isinstance(m, ToolMessage))
+
+        if tool_message_count >= MAX_TOOL_ROUNDS:
+            return END
+
+        # 使用 LangGraph 内置判断：最后一条消息是否有工具调用
+        last_message = messages[-1]
+        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+            return "act"
+
+        return END
+
     # ===== 构建状态图 =====
     graph = StateGraph(AgentState)
 
@@ -74,24 +101,13 @@ def create_agent_graph():
     # 设置入口
     graph.set_entry_point("think")
 
-    # 限制最大循环次数，防止反复调用工具
-    def should_continue(state: AgentState):
-        """判断是否需要继续调用工具，最多循环3次"""
-        messages = state["messages"]
-        # 统计工具调用次数（ToolMessage 表示一次工具执行完成）
-        tool_count = sum(1 for m in messages if isinstance(m, ToolMessage))
-        if tool_count >= 3:
-            return END
-        # 正常判断 LLM 输出是否包含工具调用
-        return tools_condition(state)
-
     # 添加条件边：思考后判断是否需要调用工具
     graph.add_conditional_edges(
         "think",
-        should_continue,     # 用自定义判断替代 tools_condition
+        should_continue,
         {
-            "tools": "act",   # 需要工具 → 去执行
-            END: END,         # 不需要工具或超过循环次数 → 结束
+            "act": "act",   # 需要工具 → 去执行
+            END: END,       # 不需要工具 → 结束
         },
     )
 
@@ -129,10 +145,10 @@ def chat(user_input: str, session_id: str = "default") -> str:
     # 获取该会话的历史消息
     history = get_session_history(session_id)
 
-    # 只保留最近10条消息（5轮对话），减少 token 数量
-    recent_messages = history.messages[-10:]
+    # 只取最近 MAX_HISTORY_MESSAGES 条历史消息（加速推理）
+    recent_messages = history.messages[-MAX_HISTORY_MESSAGES:]
 
-    # 构建完整的消息列表 = 最近历史 + 新消息
+    # 构建完整的消息列表 = 历史消息 + 新消息
     all_messages = recent_messages + [HumanMessage(content=user_input)]
 
     # 调用 Agent

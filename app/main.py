@@ -1,6 +1,6 @@
 """
 FastAPI 应用主入口
-启动 API 服务 + Gradio 前端
+启动 API 服务 + 美化前端界面
 """
 import os
 import sys
@@ -11,7 +11,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse, FileResponse
 
 from app.config import settings
 from app.api.routes import router
@@ -28,15 +29,15 @@ def create_app() -> FastAPI:
         - 文档问答：上传公司文档，AI 自动回答相关问题
         - 员工查询：查询员工信息、部门归属
         - 文档搜索：语义搜索文档内容
+        - 文档修改：上传文档+修改要求，AI 修改后返回文件
         - 多轮对话：支持上下文连续对话
 
         ## 技术栈
         - LangChain + LangGraph (ReAct Agent)
         - ChromaDB (向量数据库)
         - FastAPI (后端服务)
-        - Gradio (前端界面)
         """,
-        version="1.0.0",
+        version="2.0.0",
     )
 
     # CORS 跨域支持
@@ -51,10 +52,21 @@ def create_app() -> FastAPI:
     # 注册 API 路由
     app.include_router(router, prefix="/api/v1", tags=["Agent API"])
 
-    # 根路径重定向到 Gradio 界面
+    # 确保静态文件目录存在
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    os.makedirs(static_dir, exist_ok=True)
+
+    # 确保下载文件目录存在（修改后的文档）
+    modified_dir = os.path.join(static_dir, "modified")
+    os.makedirs(modified_dir, exist_ok=True)
+
+    # 挂载静态文件目录（包含 index.html 和修改后的文档）
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+    # 根路径重定向到美化的前端页面
     @app.get("/")
     async def root():
-        return RedirectResponse(url="/ui")
+        return FileResponse(os.path.join(static_dir, "index.html"))
 
     # 健康检查
     @app.get("/health")
@@ -71,22 +83,22 @@ if __name__ == "__main__":
     # 确保数据目录存在
     os.makedirs(settings.DOCUMENTS_DIR, exist_ok=True)
     os.makedirs(settings.CHROMA_DIR, exist_ok=True)
-    os.makedirs(settings.DOCUMENTS_DIR, exist_ok=True)
-    os.makedirs(settings.CHROMA_DIR, exist_ok=True)
-    os.makedirs(os.path.join(settings.DATA_DIR, "conversations"), exist_ok=True)  # 新增
 
-    # 创建 Gradio 界面并挂载到 FastAPI
-    from app.gradio_app import create_gradio_app
-    import gradio as gr
+    # 确保对话历史目录存在
+    conversations_dir = os.path.join(settings.DATA_DIR, "conversations")
+    os.makedirs(conversations_dir, exist_ok=True)
 
-    demo = create_gradio_app()
-    app = gr.mount_gradio_app(app, demo, path="/ui")
+    # 确保用户数据目录存在
+    os.makedirs(os.path.join(settings.DATA_DIR, "users"), exist_ok=True)
+
+    # 确保临时文件目录存在
+    os.makedirs(os.path.join(settings.DATA_DIR, "temp"), exist_ok=True)
 
     print("=" * 50)
     print("企业文档智能助手 Agent 启动中...")
-    print(f"  API 地址: http://localhost:{settings.APP_PORT}")
+    print(f"  前端界面: http://localhost:{settings.APP_PORT}")
+    print(f"  API 地址: http://localhost:{settings.APP_PORT}/api/v1")
     print(f"  API 文档: http://localhost:{settings.APP_PORT}/docs")
-    print(f"  Gradio 界面: http://localhost:{settings.APP_PORT}/ui")
     print("=" * 50)
 
     uvicorn.run(
