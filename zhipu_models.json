@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://open.bigmodel.cn",
+    "name": "ZHIPU AI OPEN PLATFORM - 智谱AI",
+    "snippet": "智谱大模型开放平台-新一代国产自主通用AI大模型开放平台，是国内大模型排名前列的大模型网站，研发了多款LLM模型，多模态视觉模型产品，致力于将AI产品技术与行业场景双轮 ...",
+    "host_name": "open.bigmodel.cn",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/models/text/glm-5",
+    "name": "GLM-5 - 智谱AI开放文档",
+    "snippet": "GLM-5 是智谱的基座模型，面向Agentic Engineering 打造，能够在复杂系统工程与长程Agent 任务中提供可靠生产力。在Coding 与Agent 能力上，GLM-5 取得开源SOTA 表现，在 ...",
+    "host_name": "docs.bigmodel.cn",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://bigmodel.cn",
+    "name": "智谱AI",
+    "snippet": "智谱大模型开放平台-新一代国产自主通用AI大模型开放平台，是国内大模型排名前列的大模型网站，研发了多款LLM模型，多模态视觉模型产品，致力于将AI产品技术与行业场景双轮 ...",
+    "host_name": "bigmodel.cn",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/update/new-releases",
+    "name": "新品发布 - 智谱AI开放文档",
+    "snippet": "GLM-5-Turbo 龙虾增强基座模型上线. GLM-5-Turbo. 面向OpenClaw 龙虾场景深度优化的基座模型; 强化了对外部工具与各类Skills的调用能力，在多步任务中更稳定、更可靠 ...",
+    "host_name": "docs.bigmodel.cn",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://docs.bigmodel.cn/cn/guide/start/model-overview",
+    "name": "模型概览- 智谱AI开放文档",
+    "snippet": "GLM-5.1, 最新旗舰, - Coding 能力对齐Claude Opus 4.6 - 长程任务显著提升，可自主工作长达8 小时 ; GLM-5, 高智能基座, - 编程能力对齐Claude Opus 4.5 - 擅长Agentic 长程 ...",
+    "host_name": "docs.bigmodel.cn",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  }
+]
