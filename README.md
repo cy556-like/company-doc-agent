@@ -1,302 +1,257 @@
----
-title: 企业文档智能助手
-emoji: 🤖
-colorFrom: blue
-colorTo: green
-sdk: docker
-pinned: false
----
-# 🤖 企业文档智能助手 Agent
+# 企业文档智能助手 Agent
 
-> 基于 LangChain + LangGraph 的 ReAct Agent，支持文档问答、员工查询、文档搜索
+基于 **LangChain + LangGraph + FastAPI + ChromaDB** 的企业文档智能助手，采用 ReAct Agent 模式，支持 RAG 文档问答、员工查询、文档修改、流式输出等功能。
 
-## 📋 项目简介
-
-本项目是一个面向企业内部的文档智能助手 Agent，能够帮助员工快速获取公司制度、流程规范、员工信息等内容。
-
-### 核心功能
-
-| 功能 | 说明 | 技术实现 |
-|------|------|---------|
-| 📄 文档问答 | 上传公司文档，AI 自动回答相关问题 | RAG（检索增强生成）+ ChromaDB |
-| 👥 员工查询 | 查询员工信息、部门归属 | Tool Calling |
-| 🔍 文档搜索 | 语义搜索文档内容 | 向量相似度检索 |
-| 💬 多轮对话 | 支持上下文连续对话 | 会话记忆管理 |
-
-### 技术架构
-
-```
-用户提问
-    ↓
-┌──────────────────────────────────────┐
-│          LangGraph ReAct Agent       │
-│                                      │
-│   Think → Act → Observe → Think...  │
-│     ↓        ↓                       │
-│   LLM    Tool Calling                │
-│            ↓                         │
-│   ┌─────────────┐  ┌─────────────┐  │
-│   │ 文档检索工具 │  │ 员工查询工具 │  │
-│   └──────┬──────┘  └──────┬──────┘  │
-│          ↓                ↓         │
-│   ┌─────────────┐  ┌─────────────┐  │
-│   │   ChromaDB  │  │ employees   │  │
-│   │  向量数据库  │  │   .json     │  │
-│   └─────────────┘  └─────────────┘  │
-└──────────────────────────────────────┘
-    ↓
-用户获得回答
-```
-
-### 技术栈
-
-- **Agent 框架**: LangChain 0.3 + LangGraph 0.2（ReAct 模式）
-- **LLM**: DeepSeek / OpenAI（OpenAI 兼容接口）
-- **向量数据库**: ChromaDB（嵌入式，无需额外服务）
-- **后端**: FastAPI（异步高性能）
-- **前端**: Gradio（快速搭建聊天界面）
-- **部署**: Docker + Docker Compose
-
----
-
-## 🚀 快速开始
-
-### 前置条件
-
-- Python 3.11+
-- DeepSeek 或 OpenAI API Key
-
-### 1. 克隆项目
-
-```bash
-git clone <your-repo-url>
-cd company-doc-agent
-```
-
-### 2. 安装依赖
-
-```bash
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### 3. 配置环境变量
-
-```bash
-cp .env.example .env
-# 编辑 .env 文件，填入你的 API Key
-```
-
-`.env` 文件内容：
-```env
-# 推荐使用 DeepSeek（便宜好用）
-LLM_API_KEY=sk-xxxxxxxxxxxxxxxx
-LLM_BASE_URL=https://api.deepseek.com/v1
-LLM_MODEL=deepseek-chat
-
-# 或使用 OpenAI
-# LLM_API_KEY=sk-xxxxxxxxxxxxxxxx
-# LLM_BASE_URL=https://api.openai.com/v1
-# LLM_MODEL=gpt-4o
-```
-
-### 4. 初始化测试数据
-
-```bash
-python scripts/seed_data.py
-```
-
-这会创建：
-- 10 位示例员工信息
-- 4 个示例公司文档（休假制度、员工手册、技术部规范、报销流程）
-
-### 5. 启动服务
-
-```bash
-python app/main.py
-```
-
-启动后访问：
-- 🤖 **Gradio 界面**: http://localhost:8000
-- 📖 **API 文档**: http://localhost:8000/docs
-- ❤️ **健康检查**: http://localhost:8000/health
-
----
-
-## 📡 API 接口
-
-### 与 Agent 对话
-
-```bash
-curl -X POST http://localhost:8000/api/v1/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "公司年假制度是什么？", "session_id": "user1"}'
-```
-
-### 上传文档
-
-```bash
-curl -X POST http://localhost:8000/api/v1/upload \
-  -F "file=@你的文档.pdf"
-```
-
-### 搜索文档
-
-```bash
-curl -X POST http://localhost:8000/api/v1/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "报销流程", "top_k": 3}'
-```
-
-### 列出文档
-
-```bash
-curl http://localhost:8000/api/v1/documents
-```
-
----
-
-## 🐳 Docker 部署
-
-### 本地 Docker 运行
-
-```bash
-# 构建镜像
-docker build -t company-doc-agent .
-
-# 运行容器
-docker run -d \
-  --name company-doc-agent \
-  -p 8000:8000 \
-  -e LLM_API_KEY=sk-xxxxxxxxxxxxxxxx \
-  -e LLM_BASE_URL=https://api.deepseek.com/v1 \
-  -e LLM_MODEL=deepseek-chat \
-  company-doc-agent
-```
-
-### Docker Compose 运行
-
-```bash
-# 设置环境变量
-export LLM_API_KEY=sk-xxxxxxxxxxxxxxxx
-
-# 启动
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f
-
-# 停止
-docker-compose down
-```
-
----
-
-## ☁️ 云端部署
-
-### 方案一：Render（推荐，最简单）
-
-1. 将代码推送到 GitHub
-2. 登录 [Render](https://render.com/)，创建新的 **Web Service**
-3. 连接 GitHub 仓库
-4. 配置：
-   - **Build Command**: `pip install -r requirements.txt && python scripts/seed_data.py`
-   - **Start Command**: `python app/main.py`
-   - **Environment Variables**:
-     - `LLM_API_KEY` = 你的 API Key
-     - `LLM_BASE_URL` = https://api.deepseek.com/v1
-     - `LLM_MODEL` = deepseek-chat
-5. 点击 **Deploy**，等待部署完成
-6. 获得 `https://your-agent.onrender.com` 地址
-
-### 方案二：Railway
-
-1. 登录 [Railway](https://railway.app/)
-2. 新建项目 → 从 GitHub 部署
-3. 添加环境变量（同上）
-4. 自动部署，获得访问地址
-
-### 方案三：阿里云函数计算（国内推荐）
-
-1. 安装 Fun 工具：`npm install -g fun`
-2. 创建 `template.yml` 配置文件
-3. 运行 `fun deploy` 部署
-
----
-
-## 📁 项目结构
+## 项目架构
 
 ```
 company-doc-agent/
 ├── app/
-│   ├── main.py              # FastAPI 启动入口
-│   ├── config.py            # 配置管理
-│   ├── gradio_app.py        # Gradio 前端界面
+│   ├── main.py                 # FastAPI 应用入口
+│   ├── config.py               # 配置管理（模型列表、环境变量）
 │   ├── agent/
-│   │   ├── core.py          # ⭐ Agent 核心（LangGraph ReAct）
-│   │   ├── tools.py         # ⭐ 工具定义（搜索/查询/上传）
-│   │   └── prompts.py       # 系统提示词
+│   │   ├── core.py             # Agent 核心逻辑（ReAct + 流式输出）
+│   │   ├── prompts.py          # 系统提示词
+│   │   └── tools.py            # Agent 工具集（5个工具）
 │   ├── api/
-│   │   └── routes.py        # REST API 路由
+│   │   └── routes.py           # API 路由（REST + SSE 流式端点）
 │   ├── rag/
-│   │   └── document.py      # ⭐ RAG 文档处理（加载/分块/向量化/检索）
-│   └── memory/
-│       └── manager.py       # 会话记忆管理
-├── data/
-│   ├── documents/           # 文档存放目录
-│   ├── chroma_db/           # 向量数据库
-│   └── employees.json       # 员工信息
-├── scripts/
-│   └── seed_data.py         # 初始化测试数据
-├── Dockerfile               # Docker 构建文件
-├── docker-compose.yml       # Docker Compose 配置
-├── requirements.txt         # Python 依赖
-├── .env.example             # 环境变量模板
-└── README.md                # 本文档
+│   │   └── document.py         # RAG 文档索引与检索
+│   ├── memory/
+│   │   └── manager.py          # 多轮对话历史管理
+│   ├── auth/
+│   │   └── user_manager.py     # 用户注册/登录
+│   ├── utils/
+│   │   └── pdf_generator.py    # PDF 生成（fpdf2 + 中文支持）
+│   └── static/
+│       └── index.html          # ChatGPT 风格前端界面
+├── data/                       # 运行时数据（自动创建）
+│   ├── documents/              # 上传的文档
+│   ├── chroma_db/              # 向量数据库
+│   ├── conversations/          # 对话历史
+│   └── users/                  # 用户数据
+├── .env                        # 环境变量配置
+├── requirements.txt            # Python 依赖
+└── README.md
 ```
 
----
+## 技术栈
 
-## 🔑 核心代码解析
+| 组件 | 技术 | 说明 |
+|------|------|------|
+| LLM | 智谱 GLM 系列 | GLM-5.1 / GLM-5-Turbo / GLM-4-Flash 等 |
+| Agent | LangGraph (ReAct) | 推理+行动循环，最多3轮工具调用 |
+| RAG | ChromaDB + embedding-3 | 向量存储与语义检索 |
+| 后端 | FastAPI + SSE | REST API + 流式输出 |
+| 前端 | HTML/CSS/JS | ChatGPT 风格，支持逐字流式渲染 |
+| PDF | fpdf2 | 中文 PDF 生成 |
 
-### 1. ReAct Agent 工作流（app/agent/core.py）
+## 环境要求
+
+- Python 3.10+
+- Windows / Linux（ECS）
+
+## 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+依赖包含：
 
 ```
-用户输入 → LLM 思考(Think) → 需要工具？
-                                ├─ 是 → 执行工具(Act) → 观察结果(Observe) → 回到思考
-                                └─ 否 → 输出回答 → 结束
+fastapi, uvicorn, python-dotenv, pydantic    # Web 框架
+langchain, langchain-openai, langgraph       # Agent 框架
+chromadb, pypdf, docx2txt, fpdf2             # RAG 与文档处理
+httpx                                         # HTTP 客户端
 ```
 
-这是 LangGraph 的核心：用状态图（StateGraph）定义 Agent 的决策流程，支持循环和条件分支。
+## 环境变量配置
 
-### 2. RAG 检索流程（app/rag/document.py）
+在项目根目录创建 `.env` 文件：
 
+```env
+# LLM 配置（智谱 API）
+LLM_API_KEY=你的智谱API密钥
+LLM_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+LLM_MODEL=glm-4-flash
+
+# Embedding 模型
+EMBEDDING_MODEL=embedding-3
+
+# 服务配置（可选）
+APP_HOST=0.0.0.0
+APP_PORT=8000
 ```
-上传文档 → 加载(PDF/TXT/DOCX) → 分块(500字/块) → 向量化(Embedding) → 存入 ChromaDB
-用户提问 → 问题向量化 → ChromaDB 相似度检索 → 取出相关片段 → 喂给 LLM → 生成回答
+
+> 智谱 API 密钥获取：https://open.bigmodel.cn/
+
+## 启动服务
+
+```bash
+# 开发模式（热重载）
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# 生产模式
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-### 3. 工具定义（app/agent/tools.py）
+启动后访问：
+- 前端界面：`http://你的IP:8000`
+- API 文档：`http://你的IP:8000/docs`
+- 健康检查：`http://你的IP:8000/health`
 
-每个工具用 `@tool` 装饰器定义，包含：
-- **函数名**：Agent 调用时的名称
-- **文档字符串**：Agent 根据描述判断何时使用
-- **参数类型**：Agent 自动构造调用参数
+## API 端点一览
 
----
+### 认证
 
-## 🌟 面试亮点
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/auth/login` | 用户登录 |
+| POST | `/api/v1/auth/register` | 用户注册 |
 
-1. **ReAct 模式**：Agent 不是简单的问答，而是"思考→行动→观察→再思考"的循环
-2. **RAG 检索增强**：基于向量数据库的语义检索，而非关键词匹配
-3. **LangGraph 状态图**：用图结构定义 Agent 工作流，可扩展性强
-4. **工具调用**：Agent 自主决定调用哪个工具，体现了 Agent 的"智能"
-5. **工程化实践**：Docker 容器化、环境变量管理、API 接口设计、会话隔离
-6. **可观测性**：每个工具调用都有明确的输入输出，便于调试
+### 对话
 
----
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/chat` | 普通对话（非流式） |
+| POST | `/api/v1/chat/stream` | 流式对话（SSE 逐字输出） |
+| POST | `/api/v1/chat-with-file` | 文件+对话（非流式） |
+| POST | `/api/v1/chat-with-file/stream` | 文件+对话（流式 SSE） |
 
-## 📄 License
+### 会话管理
 
-MIT
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/chats` | 创建新会话 |
+| GET | `/api/v1/chats` | 获取会话列表 |
+| DELETE | `/api/v1/chats/{id}` | 删除会话 |
+| PUT | `/api/v1/chats/{id}/rename` | 重命名会话 |
+| GET | `/api/v1/history/{id}` | 获取对话历史 |
+| DELETE | `/api/v1/history/{id}` | 清除对话历史 |
+
+### 文档与模型
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/v1/upload` | 上传文档到知识库 |
+| GET | `/api/v1/documents` | 列出已索引文档 |
+| POST | `/api/v1/search` | 搜索文档内容 |
+| GET | `/api/v1/models` | 获取可用模型列表 |
+| POST | `/api/v1/models/set` | 切换当前模型 |
+
+## Agent 工具
+
+| 工具 | 功能 | 触发方式 |
+|------|------|----------|
+| search_documents_tool | 语义搜索知识库文档 | 用户问文档相关问题 |
+| lookup_employee_tool | 查询员工信息 | 用户问员工/部门信息 |
+| list_documents_tool | 列出所有已索引文档 | 用户问有哪些文档 |
+| upload_document_tool | 上传文档到知识库 | 用户要求上传 |
+| modify_document_tool | 修改文档并生成 PDF | 用户明确要求修改文档 |
+
+## 流式输出说明
+
+前端默认使用 SSE 流式端点，体验效果：
+
+1. **思考阶段** → 显示旋转动画 + "正在思考..."
+2. **工具调用** → 显示工具标签（如 "搜索文档..." → "搜索文档 完成"）
+3. **逐字输出** → 每个 token 实时渲染，带闪烁光标
+4. **完成** → 光标消失，回答完整显示
+
+后端实现：`agent.astream_events(version="v2")` + FastAPI `StreamingResponse`
+
+## GitHub 与 ECS 同步
+
+> 由于国内 ECS 无法直接访问 github.com，需通过 **GitHub API (api.github.com)** 同步文件。
+
+### 前置条件
+
+- GitHub 仓库：`cy556-like/company-doc-agent`
+- GitHub Token：需有 repo 权限
+
+### 本地推送到 GitHub
+
+```bash
+# 修改代码后
+git add .
+git commit -m "描述你的修改"
+git push origin main
+```
+
+### ECS 从 GitHub 拉取单个文件
+
+```powershell
+# 通用模板（替换 {文件路径} 即可）
+python -c "import requests,base64; r=requests.get('https://api.github.com/repos/cy556-like/company-doc-agent/contents/{文件路径}', headers={'Authorization':'token 你的GitHub Token','Accept':'application/vnd.github.v3+json'}); open('{文件路径}','wb').write(base64.b64decode(r.json()['content'])); print('updated')"
+
+# 示例：更新 core.py
+python -c "import requests,base64; r=requests.get('https://api.github.com/repos/cy556-like/company-doc-agent/contents/app/agent/core.py', headers={'Authorization':'token ghp_xxx','Accept':'application/vnd.github.v3+json'}); open('app/agent/core.py','wb').write(base64.b64decode(r.json()['content'])); print('updated')"
+
+# 示例：更新 index.html
+python -c "import requests,base64; r=requests.get('https://api.github.com/repos/cy556-like/company-doc-agent/contents/app/static/index.html', headers={'Authorization':'token ghp_xxx','Accept':'application/vnd.github.v3+json'}); open('app/static/index.html','wb').write(base64.b64decode(r.json()['content'])); print('updated')"
+```
+
+### 一次性更新所有核心文件
+
+```powershell
+# 在 ECS 项目根目录执行
+$token = "你的GitHub Token"
+$repo = "cy556-like/company-doc-agent"
+$files = @(
+    "app/agent/core.py",
+    "app/agent/tools.py",
+    "app/agent/prompts.py",
+    "app/api/routes.py",
+    "app/config.py",
+    "app/main.py",
+    "app/static/index.html",
+    "app/rag/document.py",
+    "app/memory/manager.py",
+    "app/utils/pdf_generator.py"
+)
+
+foreach ($f in $files) {
+    $url = "https://api.github.com/repos/$repo/contents/$f"
+    $headers = @{ "Authorization" = "token $token"; "Accept" = "application/vnd.github.v3+json" }
+    $resp = Invoke-RestMethod -Uri $url -Headers $headers
+    $content = [System.Convert]::FromBase64String($resp.content)
+    [System.IO.File]::WriteAllBytes($f, $content)
+    Write-Host "Updated: $f"
+}
+```
+
+### 同步后重启服务
+
+```powershell
+# 如果用 --reload 模式，修改文件会自动重启
+# 否则手动重启
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+## 常见问题
+
+### Q: 如何添加新的 LLM 模型？
+
+编辑 `app/config.py` 中的 `AVAILABLE_MODELS` 列表，添加新模型的 `id`、`name`、`desc`，然后同步到 ECS 并重启。
+
+### Q: 如何修改 Agent 的行为？
+
+编辑 `app/agent/prompts.py` 中的 `SYSTEM_PROMPT`，调整 Agent 的角色设定和行为规则。
+
+### Q: 如何添加新的 Agent 工具？
+
+1. 在 `app/agent/tools.py` 中定义新工具函数并加 `@tool` 装饰器
+2. 将新工具加入 `ALL_TOOLS` 列表
+3. 在 `app/agent/core.py` 的 `TOOL_DISPLAY_NAMES` 中添加中文名映射
+4. 同步到 ECS 并重启
+
+### Q: 为什么 ECS 上 github.com 无法访问？
+
+国内服务器访问 GitHub 不稳定，使用 `api.github.com`（GitHub API）可以正常访问，通过 API 下载文件内容并写入本地即可同步。
+
+### Q: 流式输出不生效？
+
+1. 确认后端 `core.py` 中 `create_llm()` 有 `streaming=True`
+2. 确认前端 `sendMessage()` 调用的是 `/chat/stream` 而非 `/chat`
+3. 浏览器 F12 Network 面板查看是否有 SSE 请求
