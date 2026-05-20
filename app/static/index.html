@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>企业文档智能助手</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -374,9 +374,158 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+        /* ===== 侧边栏移动端遮罩 ===== */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 998;
+        }
+        .sidebar-overlay.active { display: block; }
+
+        /* ===== 移动端适配 ===== */
+        @media (max-width: 768px) {
+            .login-card {
+                width: 95% !important;
+                max-width: 400px !important;
+                padding: 28px 20px !important;
+            }
+            .form-group input {
+                font-size: 16px !important;
+            }
+            .sidebar {
+                position: fixed !important;
+                left: -280px !important;
+                top: 0 !important;
+                height: 100vh !important;
+                z-index: 999 !important;
+                transition: left 0.3s ease !important;
+                box-shadow: none !important;
+            }
+            .sidebar.mobile-open {
+                left: 0 !important;
+                box-shadow: 4px 0 20px rgba(0,0,0,0.3) !important;
+            }
+            .sidebar.collapsed {
+                left: -280px !important;
+                width: var(--sidebar-width) !important;
+                min-width: var(--sidebar-width) !important;
+            }
+            .chat-main {
+                width: 100% !important;
+            }
+            .chat-header {
+                padding: 10px 12px !important;
+                gap: 8px !important;
+            }
+            .chat-header h1 {
+                font-size: 15px !important;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .header-btn {
+                padding: 6px 10px !important;
+                font-size: 12px !important;
+            }
+            .chat-messages {
+                padding: 12px 8px !important;
+            }
+            .message {
+                margin-bottom: 14px !important;
+            }
+            .message .avatar {
+                width: 30px !important;
+                height: 30px !important;
+                font-size: 14px !important;
+            }
+            .message.user .avatar {
+                margin-left: 8px !important;
+            }
+            .message.assistant .avatar {
+                margin-right: 8px !important;
+            }
+            .message .bubble {
+                padding: 10px 14px !important;
+                font-size: 15px !important;
+                max-width: 85% !important;
+                line-height: 1.5 !important;
+            }
+            .welcome-msg {
+                padding: 40px 16px !important;
+            }
+            .welcome-msg h2 {
+                font-size: 22px !important;
+            }
+            .welcome-msg p {
+                font-size: 14px !important;
+            }
+            .quick-actions {
+                gap: 6px !important;
+            }
+            .quick-action {
+                padding: 8px 12px !important;
+                font-size: 13px !important;
+            }
+            .chat-input-area {
+                padding: 10px 10px !important;
+            }
+            .input-container {
+                max-width: 100% !important;
+            }
+            .input-row textarea {
+                font-size: 16px !important;
+                min-height: 44px !important;
+                padding: 10px 14px !important;
+            }
+            .icon-btn {
+                width: 44px !important;
+                height: 44px !important;
+            }
+            .modal {
+                width: 94vw !important;
+                max-width: 520px !important;
+                max-height: 85vh !important;
+                padding: 18px !important;
+                margin: 0 auto !important;
+            }
+            .rename-card {
+                width: 90vw !important;
+                max-width: 360px !important;
+                padding: 18px !important;
+            }
+            .rename-card input {
+                font-size: 16px !important;
+            }
+            .chat-item .chat-actions {
+                display: flex !important;
+            }
+            .chat-item .chat-time {
+                display: none !important;
+            }
+        }
+        @media (max-width: 400px) {
+            .header-btn {
+                padding: 5px 8px !important;
+                font-size: 11px !important;
+            }
+            .chat-header h1 {
+                font-size: 14px !important;
+            }
+            .message .bubble {
+                max-width: 90% !important;
+                font-size: 14px !important;
+            }
+        }
     </style>
 </head>
 <body>
+
+<!-- ===== 侧边栏遮罩（移动端） ===== -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebarMobile()"></div>
 
 <!-- ===== 登录页 ===== -->
 <div class="login-page" id="loginPage">
@@ -611,6 +760,7 @@ function renderChatList() {
             // 避免点击操作按钮时切换
             if (e.target.closest('.chat-action-btn')) return;
             switchChat(chat.chat_id);
+            closeSidebarOnMobile();
         };
         const timeStr = formatTime(chat.updated_at || chat.created_at);
         item.innerHTML = `
@@ -635,6 +785,7 @@ async function createNewChat() {
             currentChatId = data.chat.chat_id;
             await loadChatList();
             clearChatUI();
+            closeSidebarOnMobile();
         }
     } catch (e) { console.error('创建会话失败', e); }
 }
@@ -735,7 +886,26 @@ async function clearCurrentChat() {
 
 // ===== 侧边栏 =====
 function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('collapsed');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (window.innerWidth <= 768) {
+        // 移动端：使用 drawer 模式
+        sidebar.classList.toggle('mobile-open');
+        overlay.classList.toggle('active');
+    } else {
+        // 桌面端：折叠/展开
+        sidebar.classList.toggle('collapsed');
+    }
+}
+function closeSidebarMobile() {
+    document.getElementById('sidebar').classList.remove('mobile-open');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+}
+// 移动端点击聊天项后自动关闭侧边栏
+function closeSidebarOnMobile() {
+    if (window.innerWidth <= 768) {
+        setTimeout(closeSidebarMobile, 200);
+    }
 }
 
 // ===== 发送消息 =====
