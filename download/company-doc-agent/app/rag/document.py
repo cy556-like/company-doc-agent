@@ -1,38 +1,51 @@
 """
 文档处理与向量化模块 (RAG)
 负责：加载文档 → 分块 → 向量化 → 存入 ChromaDB → 检索
+优化：单例缓存 Embeddings 和 VectorStore 实例，避免重复创建
 """
 import os
-import json
 from typing import Optional
 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+
+try:
+    from langchain_chroma import Chroma
+except ImportError:
+    from langchain_community.vectorstores import Chroma
 
 from app.config import settings
 
 
+# ===== 单例缓存 =====
+_vector_store = None
+_embeddings = None
+
+
 def get_embeddings():
-    """获取 Embedding 模型（使用 OpenAI 兼容接口）"""
-    # 智谱 GLM 用 embedding-3，OpenAI 用 text-embedding-v3，DeepSeek 用 text-embedding-v3
-    # 通过 .env 中的 EMBEDDING_MODEL 配置
-    embedding_model = getattr(settings, 'EMBEDDING_MODEL', 'embedding-3')
-    return OpenAIEmbeddings(
-        api_key=settings.LLM_API_KEY,
-        base_url=settings.LLM_BASE_URL,
-        model=embedding_model,
-    )
+    """获取 Embedding 模型（单例缓存，避免重复创建）"""
+    global _embeddings
+    if _embeddings is None:
+        embedding_model = getattr(settings, 'EMBEDDING_MODEL', 'embedding-3')
+        _embeddings = OpenAIEmbeddings(
+            api_key=settings.LLM_API_KEY,
+            base_url=settings.LLM_BASE_URL,
+            model=embedding_model,
+        )
+    return _embeddings
 
 
 def get_vector_store():
-    """获取 ChromaDB 向量数据库实例"""
-    embeddings = get_embeddings()
-    return Chroma(
-        persist_directory=settings.CHROMA_DIR,
-        embedding_function=embeddings,
-    )
+    """获取 ChromaDB 向量数据库实例（单例缓存，避免重复创建）"""
+    global _vector_store
+    if _vector_store is None:
+        embeddings = get_embeddings()
+        _vector_store = Chroma(
+            persist_directory=settings.CHROMA_DIR,
+            embedding_function=embeddings,
+        )
+    return _vector_store
 
 
 def load_document(file_path: str) -> list:
@@ -52,6 +65,21 @@ def load_document(file_path: str) -> list:
         raise ValueError(f"不支持的文件格式: {ext}，仅支持 PDF/TXT/DOCX")
 
     return loader.load()
+
+
+def read_document_content(file_path: str) -> str:
+    """
+    读取文档的纯文本内容（用于文档修改功能）
+
+    Args:
+        file_path: 文档路径
+
+    Returns:
+        str: 文档纯文本内容
+    """
+    docs = load_document(file_path)
+    content = "\n\n".join([doc.page_content for doc in docs])
+    return content
 
 
 def split_documents(docs: list, chunk_size: int = 500, chunk_overlap: int = 100) -> list:
