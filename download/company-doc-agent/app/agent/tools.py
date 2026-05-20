@@ -171,6 +171,11 @@ def modify_document_tool(file_path: str, instruction: str) -> str:
                 output_path = output_path.replace(".docx", ".txt")
                 with open(output_path, "w", encoding="utf-8") as f:
                     f.write(modified_content)
+        elif ext == ".pdf":
+            # 使用 fpdf2 生成真正的 PDF 文件（支持中文）
+            from app.utils.pdf_generator import generate_pdf
+            success, actual_path = generate_pdf(modified_content, output_path, title=f"修改后的 {os.path.basename(file_path)}")
+            output_filename = os.path.basename(actual_path)
         else:
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(modified_content)

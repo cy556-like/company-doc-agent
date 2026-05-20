@@ -751,20 +751,55 @@ async function sendMessage() {
     document.getElementById('welcomeMsg')?.remove();
 
     if (selectedFile && message) {
-        addMessageToUI('user', `[修改文档] ${selectedFile.name}\n修改要求：${message}`);
-        input.value = ''; autoResize(input); showTyping(true);
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('instruction', message);
-        formData.append('username', currentUser);
-        try {
-            const resp = await fetch('/api/v1/modify-document', { method: 'POST', body: formData });
-            const data = await resp.json();
-            showTyping(false);
-            let content = data.message || '修改完成';
-            if (data.download_url) content += `\n\n<a class="download-link" href="${data.download_url}" download>⬇️ 下载修改后的文件</a>`;
-            addMessageToUI('assistant', data.success ? content : '修改失败: ' + data.message);
-        } catch (e) { showTyping(false); addMessageToUI('assistant', '网络错误，请重试'); }
+        // 智能路由：判断用户是否明确要求修改/返回文件
+        const modifyKeywords = ['修改', '帮我改', '编辑', '修改后', '返回文件', '给我文件', '给我修改', '改一下', '修改一下', '帮我修改', '改一下文件', '修改文档', '修改内容', '更新文档', '更新内容', '生成文件', '导出文件', '返回修改'];
+        const wantsModify = modifyKeywords.some(kw => message.includes(kw));
+
+        if (wantsModify) {
+            // 用户明确要求修改文件 → 走修改文档流程
+            addMessageToUI('user', `[修改文档] ${selectedFile.name}\n修改要求：${message}`);
+            input.value = ''; autoResize(input); showTyping(true);
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('instruction', message);
+            formData.append('username', currentUser);
+            try {
+                const resp = await fetch('/api/v1/modify-document', { method: 'POST', body: formData });
+                const data = await resp.json();
+                showTyping(false);
+                let content = data.message || '修改完成';
+                if (data.download_url) content += `\n\n<a class="download-link" href="${data.download_url}" download>⬇️ 下载修改后的文件</a>`;
+                addMessageToUI('assistant', data.success ? content : '修改失败: ' + (data.detail || data.message));
+            } catch (e) { showTyping(false); addMessageToUI('assistant', '网络错误，请重试'); }
+        } else {
+            // 用户只是提问/分析 → 先上传文件到知识库，再走聊天回答
+            addMessageToUI('user', `📎 ${selectedFile.name}\n${message}`);
+            input.value = ''; autoResize(input); showTyping(true);
+            try {
+                // 第一步：上传文件到知识库
+                const uploadForm = new FormData();
+                uploadForm.append('file', selectedFile);
+                const uploadResp = await fetch('/api/v1/upload', { method: 'POST', body: uploadForm });
+                const uploadData = await uploadResp.json();
+                if (!uploadResp.ok) {
+                    showTyping(false);
+                    addMessageToUI('assistant', '文件上传失败：' + (uploadData.detail || '未知错误'));
+                    removeFile();
+                    isLoading = false; document.getElementById('sendBtn').disabled = false; scrollToBottom();
+                    return;
+                }
+                // 第二步：将用户问题发给 Agent，Agent 会通过 RAG 检索刚上传的文档来回答
+                const chatResp = await fetch('/api/v1/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, session_id: currentChatId })
+                });
+                const chatData = await chatResp.json();
+                showTyping(false);
+                addMessageToUI('assistant', chatData.response || chatData.detail || '回答失败');
+                await loadChatList();
+            } catch (e) { showTyping(false); addMessageToUI('assistant', '网络错误，请重试'); }
+        }
         removeFile();
     } else if (selectedFile && !message) {
         addMessageToUI('user', `[上传文档] ${selectedFile.name}`);

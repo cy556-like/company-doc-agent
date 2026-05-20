@@ -252,7 +252,14 @@ async def modify_document(
                 output_path = os.path.join(modified_dir, output_filename)
                 with open(output_path, "w", encoding="utf-8") as f:
                     f.write(modified_content)
+        elif ext == ".pdf":
+            # 使用 fpdf2 生成真正的 PDF 文件（支持中文）
+            from app.utils.pdf_generator import generate_pdf
+            success, actual_path = generate_pdf(modified_content, output_path, title=f"修改后的 {file.filename}")
+            # 更新实际输出文件名（可能回退为 .txt）
+            output_filename = os.path.basename(actual_path)
         else:
+            # .txt 等其他格式直接保存文本
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(modified_content)
 
