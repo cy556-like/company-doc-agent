@@ -304,11 +304,7 @@
         .file-bar .file-name { flex: 1; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .file-bar .remove-file { cursor: pointer; color: var(--text-secondary); font-size: 16px; }
         .file-bar .remove-file:hover { color: var(--error); }
-        .mode-toggle { display: none; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-input); border-radius: 8px; font-size: 13px; }
-        .mode-toggle .mode-label { color: var(--text-secondary); font-size: 12px; }
-        .mode-btn { padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 12px; transition: all 0.2s; }
-        .mode-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-        .mode-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+
         .input-row { display: flex; gap: 8px; align-items: flex-end; }
         .input-row textarea { flex: 1; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; color: var(--text-primary); font-size: 15px; outline: none; resize: none; min-height: 48px; max-height: 120px; font-family: inherit; line-height: 1.5; }
         .input-row textarea:focus { border-color: var(--accent); }
@@ -475,11 +471,7 @@
                     <span class="file-name" id="fileName"></span>
                     <span class="remove-file" onclick="removeFile()">✕</span>
                 </div>
-                <div class="mode-toggle" id="modeToggle">
-                    <span class="mode-label">文件模式：</span>
-                    <button class="mode-btn active" id="modeQA" onclick="setFileMode('qa')">💬 问答</button>
-                    <button class="mode-btn" id="modeModify" onclick="setFileMode('modify')">✏️ 修改</button>
-                </div>
+
                 <div class="input-row">
                     <button class="icon-btn attach" onclick="document.getElementById('fileInput').click()" title="选择文档">📎</button>
                     <textarea id="msgInput" rows="1" placeholder="输入问题..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
@@ -527,7 +519,6 @@
 <script>
 let currentUser = null;
 let selectedFile = null;
-let fileMode = 'qa'; // 'qa' = 问答模式(默认), 'modify' = 修改模式
 let isLoading = false;
 let currentChatId = null;
 let allChats = [];
@@ -762,51 +753,24 @@ async function sendMessage() {
     document.getElementById('welcomeMsg')?.remove();
 
     if (selectedFile && message) {
-        if (fileMode === 'modify') {
-            // ✏️ 修改模式：用户明确要修改文件，走修改文档流程
-            addMessageToUI('user', `[修改文档] ${selectedFile.name}\n修改要求：${message}`);
-            input.value = ''; autoResize(input); showTyping(true);
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-            formData.append('instruction', message);
-            formData.append('username', currentUser);
-            try {
-                const resp = await fetch('/api/v1/modify-document', { method: 'POST', body: formData });
-                const data = await resp.json();
-                showTyping(false);
-                let content = data.message || '修改完成';
-                if (data.download_url) content += `\n\n<a class="download-link" href="${data.download_url}" download>⬇️ 下载修改后的文件</a>`;
-                addMessageToUI('assistant', data.success ? content : '修改失败: ' + (data.detail || data.message));
-            } catch (e) { showTyping(false); addMessageToUI('assistant', '网络错误，请重试'); }
-        } else {
-            // 💬 问答模式（默认）：先上传文件到知识库，再走 Agent 聊天回答
-            addMessageToUI('user', `📎 ${selectedFile.name}\n${message}`);
-            input.value = ''; autoResize(input); showTyping(true);
-            try {
-                // 第一步：上传文件到知识库
-                const uploadForm = new FormData();
-                uploadForm.append('file', selectedFile);
-                const uploadResp = await fetch('/api/v1/upload', { method: 'POST', body: uploadForm });
-                const uploadData = await uploadResp.json();
-                if (!uploadResp.ok) {
-                    showTyping(false);
-                    addMessageToUI('assistant', '文件上传失败：' + (uploadData.detail || '未知错误'));
-                    removeFile();
-                    isLoading = false; document.getElementById('sendBtn').disabled = false; scrollToBottom();
-                    return;
-                }
-                // 第二步：将用户问题发给 Agent，Agent 会通过 RAG 检索刚上传的文档来回答
-                const chatResp = await fetch('/api/v1/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message, session_id: currentChatId })
-                });
-                const chatData = await chatResp.json();
-                showTyping(false);
-                addMessageToUI('assistant', chatData.response || chatData.detail || '回答失败');
-                await loadChatList();
-            } catch (e) { showTyping(false); addMessageToUI('assistant', '网络错误，请重试'); }
-        }
+        // ChatGPT 风格：文件+消息统一走 /chat-with-file，Agent 自动判断意图
+        addMessageToUI('user', `📎 ${selectedFile.name}\n${message}`);
+        input.value = ''; autoResize(input); showTyping(true);
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('message', message);
+        formData.append('session_id', currentChatId);
+        try {
+            const resp = await fetch('/api/v1/chat-with-file', { method: 'POST', body: formData });
+            const data = await resp.json();
+            showTyping(false);
+            if (data.response) {
+                addMessageToUI('assistant', data.response);
+            } else {
+                addMessageToUI('assistant', data.detail || '处理失败');
+            }
+            await loadChatList();
+        } catch (e) { showTyping(false); addMessageToUI('assistant', '网络错误，请重试'); }
         removeFile();
     } else if (selectedFile && !message) {
         addMessageToUI('user', `[上传文档] ${selectedFile.name}`);
@@ -859,24 +823,14 @@ function onFileSelected(event) {
         selectedFile = file;
         document.getElementById('fileName').textContent = file.name;
         document.getElementById('fileBar').style.display = 'flex';
-        document.getElementById('modeToggle').style.display = 'flex';
+        document.getElementById('msgInput').placeholder = '针对此文件输入问题，或修改要求...';
     }
 }
 function removeFile() {
     selectedFile = null;
     document.getElementById('fileInput').value = '';
     document.getElementById('fileBar').style.display = 'none';
-    document.getElementById('modeToggle').style.display = 'none';
-    fileMode = 'qa';
-    document.getElementById('modeQA').classList.add('active');
-    document.getElementById('modeModify').classList.remove('active');
-}
-function setFileMode(mode) {
-    fileMode = mode;
-    document.getElementById('modeQA').classList.toggle('active', mode === 'qa');
-    document.getElementById('modeModify').classList.toggle('active', mode === 'modify');
-    // 更新输入框提示
-    document.getElementById('msgInput').placeholder = mode === 'modify' ? '输入修改要求，AI将返回修改后的文件...' : '输入问题，AI基于文档内容回答...';
+    document.getElementById('msgInput').placeholder = '输入问题...';
 }
 
 // ===== 知识库弹窗 =====
