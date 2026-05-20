@@ -23,7 +23,7 @@ def search_documents_tool(query: str) -> str:
     results = search_documents(query, top_k=3)
 
     if not results:
-        return "未找到相关文档内容。"
+        return "未找到相关文档内容。知识库可能暂时不可用，请稍后再试。"
 
     output = "检索到以下相关内容：\n\n"
     for i, r in enumerate(results, 1):
@@ -78,7 +78,7 @@ def list_documents_tool() -> str:
     docs = list_indexed_documents()
 
     if not docs:
-        return "知识库中暂无文档。请先上传文档。"
+        return "知识库中暂无文档或向量库暂时不可用。"
 
     output = f"知识库中共有 {len(docs)} 个文档：\n\n"
     for i, doc in enumerate(docs, 1):
@@ -106,7 +106,7 @@ def upload_document_tool(file_path: str) -> str:
 
 @tool
 def modify_document_tool(file_path: str, instruction: str) -> str:
-    """修改已有文档的内容。当用户需要修改、编辑、更新文档时使用。
+    """修改已有文档的内容。当用户明确要求修改文档并返回修改后的文件时使用。
 
     Args:
         file_path: 要修改的文档路径
@@ -171,6 +171,10 @@ def modify_document_tool(file_path: str, instruction: str) -> str:
                 output_path = output_path.replace(".docx", ".txt")
                 with open(output_path, "w", encoding="utf-8") as f:
                     f.write(modified_content)
+        elif ext == ".pdf":
+            from app.utils.pdf_generator import generate_pdf
+            success, actual_path = generate_pdf(modified_content, output_path)
+            output_filename = os.path.basename(actual_path)
         else:
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(modified_content)

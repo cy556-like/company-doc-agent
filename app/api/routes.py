@@ -11,7 +11,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
 from pydantic import BaseModel
 
 from app.agent.core import chat
-from app.rag.document import index_document, search_documents, list_indexed_documents
+from app.rag.document import index_document, search_documents, list_indexed_documents, read_document_content
 from app.memory.manager import (
     get_history_messages, clear_session_history,
     create_chat, list_chats, delete_chat, rename_chat, update_chat_time,
@@ -127,6 +127,75 @@ async def chat_api(req: ChatRequest):
         raise HTTPException(status_code=500, detail=f"Agent 处理失败: {str(e)}")
 
 
+@router.post("/chat-with-file", summary="ChatGPT风格：文件+消息对话")
+async def chat_with_file(
+    file: UploadFile = File(...),
+    message: str = Form(...),
+    session_id: str = Form("default"),
+):
+    """
+    ChatGPT风格：用户上传文件+发送消息，Agent自动判断意图
+    - 默认行为：基于文件内容用文字回答问题（总结、分析、搜索等）
+    - 仅当用户明确要求修改/返回文件时，Agent才会调用modify_document工具
+    """
+    # 检查文件格式
+    allowed_ext = {".pdf", ".txt", ".docx"}
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed_ext:
+        raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}")
+
+    # 保存文件到知识库目录
+    file_path = os.path.join(settings.DOCUMENTS_DIR, file.filename)
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    try:
+        # 尝试索引到向量库（失败不影响对话）
+        try:
+            index_document(file_path, file.filename)
+        except Exception:
+            pass
+
+        # 提取文件内容（不依赖 ChromaDB）
+        try:
+            file_content = read_document_content(file_path)
+        except Exception as e:
+            file_content = f"（无法读取文件内容: {str(e)}）"
+
+        # 限制文件内容长度，避免超出 Token 限制
+        max_chars = 8000
+        if len(file_content) > max_chars:
+            file_content = file_content[:max_chars] + f"\n\n...（已截断，共{len(file_content)}字符）"
+
+        # 构建增强消息，包含文件内容和路径
+        enhanced_message = f"""[用户上传了文件: {file.filename}]
+
+文件内容如下：
+---
+{file_content}
+---
+
+文件保存路径: {file_path}
+
+用户的问题/要求: {message}"""
+
+        # 调用 Agent
+        response = chat(enhanced_message, session_id)
+
+        # 更新会话时间
+        parts = session_id.rsplit("_", 1)
+        if len(parts) == 2:
+            try:
+                update_chat_time(parts[0], session_id)
+            except Exception:
+                pass
+
+        return {"response": response, "session_id": session_id}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"处理失败: {str(e)}")
+
+
 # ===== 文档管理接口 =====
 
 @router.post("/upload", summary="上传文档到知识库")
@@ -190,7 +259,6 @@ async def modify_document(
 
     try:
         # 读取文档内容
-        from app.rag.document import read_document_content
         content = read_document_content(temp_path)
 
         # 调用 LLM 修改文档
@@ -252,6 +320,11 @@ async def modify_document(
                 output_path = os.path.join(modified_dir, output_filename)
                 with open(output_path, "w", encoding="utf-8") as f:
                     f.write(modified_content)
+        elif ext == ".pdf":
+            # 使用 pdf_generator 生成 PDF
+            from app.utils.pdf_generator import generate_pdf
+            success, actual_path = generate_pdf(modified_content, output_path)
+            output_filename = os.path.basename(actual_path)
         else:
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(modified_content)

@@ -2,31 +2,47 @@
 文档处理与向量化模块 (RAG)
 负责：加载文档 → 分块 → 向量化 → 存入 ChromaDB → 检索
 优化：单例缓存 Embeddings 和 VectorStore 实例，避免重复创建
+修复：延迟导入 ChromaDB，即使 DLL 报错也不影响文档读取
 """
 import os
 from typing import Optional
 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
-
-try:
-    from langchain_chroma import Chroma
-except ImportError:
-    from langchain_community.vectorstores import Chroma
 
 from app.config import settings
-
 
 # ===== 单例缓存 =====
 _vector_store = None
 _embeddings = None
+_chromadb_available = True  # 标记 ChromaDB 是否可用
+
+
+def _check_chromadb():
+    """检查 ChromaDB 是否可用"""
+    global _chromadb_available
+    if not _chromadb_available:
+        return False
+    try:
+        from langchain_chroma import Chroma
+        return True
+    except ImportError:
+        try:
+            from langchain_community.vectorstores import Chroma
+            return True
+        except Exception:
+            _chromadb_available = False
+            return False
+    except Exception:
+        _chromadb_available = False
+        return False
 
 
 def get_embeddings():
     """获取 Embedding 模型（单例缓存，避免重复创建）"""
     global _embeddings
     if _embeddings is None:
+        from langchain_openai import OpenAIEmbeddings
         embedding_model = getattr(settings, 'EMBEDDING_MODEL', 'embedding-3')
         _embeddings = OpenAIEmbeddings(
             api_key=settings.LLM_API_KEY,
@@ -37,15 +53,27 @@ def get_embeddings():
 
 
 def get_vector_store():
-    """获取 ChromaDB 向量数据库实例（单例缓存，避免重复创建）"""
-    global _vector_store
-    if _vector_store is None:
+    """获取 ChromaDB 向量数据库实例（延迟导入，失败不崩溃）"""
+    global _vector_store, _chromadb_available
+    if _vector_store is not None:
+        return _vector_store
+    if not _chromadb_available:
+        return None
+    try:
+        try:
+            from langchain_chroma import Chroma
+        except ImportError:
+            from langchain_community.vectorstores import Chroma
         embeddings = get_embeddings()
         _vector_store = Chroma(
             persist_directory=settings.CHROMA_DIR,
             embedding_function=embeddings,
         )
-    return _vector_store
+        return _vector_store
+    except Exception as e:
+        print(f"[WARN] ChromaDB 不可用: {e}")
+        _chromadb_available = False
+        return None
 
 
 def load_document(file_path: str) -> list:
@@ -99,6 +127,7 @@ def split_documents(docs: list, chunk_size: int = 500, chunk_overlap: int = 100)
 def index_document(file_path: str, filename: str = None) -> dict:
     """
     完整的文档索引流程：加载 → 分块 → 向量化 → 存储
+    ChromaDB 不可用时只做分块不存储
 
     Returns:
         dict: 包含分块数量和状态信息
@@ -118,19 +147,27 @@ def index_document(file_path: str, filename: str = None) -> dict:
 
     # 4. 向量化并存储
     vector_store = get_vector_store()
-    vector_store.add_documents(chunks)
-
-    return {
-        "filename": filename,
-        "chunks": len(chunks),
-        "status": "success",
-        "message": f"文档 {filename} 已成功索引，共 {len(chunks)} 个分块",
-    }
+    if vector_store is not None:
+        vector_store.add_documents(chunks)
+        return {
+            "filename": filename,
+            "chunks": len(chunks),
+            "status": "success",
+            "message": f"文档 {filename} 已成功索引，共 {len(chunks)} 个分块",
+        }
+    else:
+        return {
+            "filename": filename,
+            "chunks": len(chunks),
+            "status": "partial",
+            "message": f"文档 {filename} 已读取（{len(chunks)} 个分块），但 ChromaDB 不可用，暂未存入向量库",
+        }
 
 
 def search_documents(query: str, top_k: int = 3) -> list[dict]:
     """
     在向量数据库中检索与查询最相关的文档片段
+    ChromaDB 不可用时返回空列表
 
     Args:
         query: 用户查询
@@ -140,6 +177,8 @@ def search_documents(query: str, top_k: int = 3) -> list[dict]:
         list[dict]: 检索结果列表
     """
     vector_store = get_vector_store()
+    if vector_store is None:
+        return []
     results = vector_store.similarity_search_with_score(query, k=top_k)
 
     formatted = []
@@ -154,8 +193,10 @@ def search_documents(query: str, top_k: int = 3) -> list[dict]:
 
 
 def list_indexed_documents() -> list[str]:
-    """列出知识库中所有已索引的文档"""
+    """列出知识库中所有已索引的文档，ChromaDB 不可用时返回空"""
     vector_store = get_vector_store()
+    if vector_store is None:
+        return []
     # 从 ChromaDB 的元数据中提取所有文档名
     try:
         collection = vector_store._collection
