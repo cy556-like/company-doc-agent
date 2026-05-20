@@ -1,10 +1,21 @@
 """
 应用配置管理
+支持动态切换 LLM 模型
 """
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# 可用的 LLM 模型列表
+AVAILABLE_MODELS = [
+    {"id": "glm-4-flash", "name": "GLM-4-Flash", "desc": "最快，适合日常对话"},
+    {"id": "glm-4-air", "name": "GLM-4-Air", "desc": "均衡，速度与质量兼顾"},
+    {"id": "glm-4-air-0111", "name": "GLM-4-Air-0111", "desc": "Air升级版，效果更好"},
+    {"id": "glm-4-plus", "name": "GLM-4-Plus", "desc": "高性能，复杂任务首选"},
+    {"id": "glm-4-long", "name": "GLM-4-Long", "desc": "超长上下文，支持128K"},
+    {"id": "glm-4", "name": "GLM-4", "desc": "旗舰模型，最强能力"},
+]
 
 
 class Settings:
@@ -30,3 +41,20 @@ class Settings:
 
 
 settings = Settings()
+
+
+def set_current_model(model_id: str) -> bool:
+    """动态切换当前使用的模型"""
+    valid_ids = [m["id"] for m in AVAILABLE_MODELS]
+    if model_id in valid_ids:
+        settings.LLM_MODEL = model_id
+        # 重置 Agent 单例，让下次对话使用新模型
+        from app.agent.core import reset_agent
+        reset_agent()
+        return True
+    return False
+
+
+def get_current_model() -> str:
+    """获取当前使用的模型ID"""
+    return settings.LLM_MODEL

@@ -277,6 +277,9 @@
         .header-btn { padding: 6px 16px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); cursor: pointer; font-size: 13px; transition: all 0.3s; }
         .header-btn:hover { border-color: var(--accent); color: var(--accent); }
         .header-btn.danger:hover { border-color: var(--error); color: var(--error); }
+        .model-select { padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; cursor: pointer; outline: none; transition: border 0.3s; }
+        .model-select:hover, .model-select:focus { border-color: var(--accent); }
+        .model-select option { background: var(--bg-secondary); color: var(--text-primary); }
 
         .chat-messages { flex: 1; overflow-y: auto; padding: 24px; }
 
@@ -590,6 +593,7 @@
             <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="切换侧边栏">☰</button>
             <h1>🤖 企业文档智能助手</h1>
             <div class="header-actions">
+                <select class="model-select" id="modelSelect" onchange="switchModel()" title="切换模型"></select>
                 <button class="header-btn" onclick="showDocs()">📄 知识库</button>
                 <button class="header-btn danger" onclick="clearCurrentChat()">🗑️ 清除当前</button>
             </div>
@@ -671,6 +675,41 @@ let currentChatId = null;
 let allChats = [];
 let renamingChatId = null;
 
+// ===== 模型管理 =====
+async function loadModels() {
+    try {
+        const resp = await fetch('/api/v1/models');
+        const data = await resp.json();
+        const select = document.getElementById('modelSelect');
+        select.innerHTML = '';
+        data.models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.name;
+            opt.title = m.desc;
+            if (m.id === data.current) opt.selected = true;
+            select.appendChild(opt);
+        });
+    } catch (e) { console.error('加载模型列表失败', e); }
+}
+
+async function switchModel() {
+    const modelId = document.getElementById('modelSelect').value;
+    try {
+        const resp = await fetch('/api/v1/models/set', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model_id: modelId })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            const select = document.getElementById('modelSelect');
+            const name = select.options[select.selectedIndex].textContent;
+            addMessageToUI('assistant', `✅ 已切换到模型: ${name}`);
+        }
+    } catch (e) { console.error('切换模型失败', e); }
+}
+
 // ===== 登录/注册 =====
 function switchTab(tab) {
     document.querySelectorAll('.login-card .tab').forEach(t => t.classList.remove('active'));
@@ -702,6 +741,7 @@ async function doLogin() {
                 document.getElementById('sidebarUsername').textContent = username;
                 document.getElementById('sidebarAvatar').textContent = username[0].toUpperCase();
                 loadChatList();
+                loadModels();
             }, 500);
         } else { msgEl.className = 'msg-box error'; msgEl.textContent = data.message || '登录失败'; }
     } catch (e) { msgEl.className = 'msg-box error'; msgEl.textContent = '网络错误'; }

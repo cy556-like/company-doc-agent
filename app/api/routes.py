@@ -17,7 +17,7 @@ from app.memory.manager import (
     create_chat, list_chats, delete_chat, rename_chat, update_chat_time,
 )
 from app.auth.user_manager import login_user, register_user
-from app.config import settings
+from app.config import settings, AVAILABLE_MODELS, set_current_model, get_current_model
 
 router = APIRouter()
 
@@ -376,3 +376,30 @@ async def delete_history(session_id: str):
     """清除指定会话的对话历史"""
     clear_session_history(session_id)
     return {"status": "success", "message": f"会话 {session_id} 的历史已清除"}
+
+
+# ===== 模型管理接口 =====
+
+@router.get("/models", summary="获取可用模型列表")
+async def get_models():
+    """获取所有可用的 LLM 模型列表及当前使用的模型"""
+    return {
+        "models": AVAILABLE_MODELS,
+        "current": get_current_model(),
+    }
+
+
+class SetModelRequest(BaseModel):
+    """切换模型请求"""
+    model_id: str
+
+
+@router.post("/models/set", summary="切换模型")
+async def set_model(req: SetModelRequest):
+    """切换当前使用的 LLM 模型"""
+    success = set_current_model(req.model_id)
+    if success:
+        return {"success": True, "message": f"已切换到模型: {req.model_id}", "current": req.model_id}
+    else:
+        valid_ids = [m["id"] for m in AVAILABLE_MODELS]
+        raise HTTPException(status_code=400, detail=f"不支持的模型: {req.model_id}，可选: {valid_ids}")

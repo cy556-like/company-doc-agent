@@ -129,6 +129,12 @@ def get_agent():
     return _agent_graph
 
 
+def reset_agent():
+    """重置 Agent 实例（切换模型后调用，下次对话会自动重建）"""
+    global _agent_graph
+    _agent_graph = None
+
+
 def chat(user_input: str, session_id: str = "default") -> str:
     """
     与 Agent 对话的核心方法
