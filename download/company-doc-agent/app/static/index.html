@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业文档智能助手</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-chat: #0f3460;
+            --bg-input: #1a1a2e;
+            --text-primary: #e6e6e6;
+            --text-secondary: #a0a0b0;
+            --accent: #4f8cf7;
+            --accent-hover: #3a6fd8;
+            --user-bubble: #4f8cf7;
+            --ai-bubble: #2a2a4a;
+            --border: #2a2a4a;
+            --success: #4caf50;
+            --error: #f44336;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .login-page {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+
+        .login-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px;
+            width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .login-card h1 { text-align: center; margin-bottom: 8px; font-size: 24px; color: var(--accent); }
+        .login-card .subtitle { text-align: center; color: var(--text-secondary); margin-bottom: 30px; font-size: 14px; }
+
+        .login-card .tab-bar { display: flex; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+        .login-card .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: var(--text-secondary); border-bottom: 2px solid transparent; transition: all 0.3s; }
+        .login-card .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 14px; color: var(--text-secondary); }
+        .form-group input { width: 100%; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; transition: border 0.3s; }
+        .form-group input:focus { border-color: var(--accent); }
+
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        .msg-box { text-align: center; margin-top: 12px; font-size: 14px; min-height: 20px; }
+        .msg-box.error { color: var(--error); }
+        .msg-box.success { color: var(--success); }
+
+        .chat-page { display: none; height: 100vh; flex-direction: column; }
+
+        .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); }
+        .chat-header h1 { font-size: 18px; color: var(--accent); }
+        .chat-header .user-info { display: flex; align-items: center; gap: 12px; }
+        .chat-header .user-info span { color: var(--text-secondary); font-size: 14px; }
+
+        .header-btn { padding: 6px 16px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); cursor: pointer; font-size: 13px; transition: all 0.3s; }
+        .header-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .header-btn.danger:hover { border-color: var(--error); color: var(--error); }
+
+        .chat-messages { flex: 1; overflow-y: auto; padding: 24px; }
+
+        .message { display: flex; margin-bottom: 20px; max-width: 800px; margin-left: auto; margin-right: auto; }
+        .message.user { flex-direction: row-reverse; }
+        .message .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+        .message.user .avatar { background: var(--accent); margin-left: 12px; }
+        .message.assistant .avatar { background: var(--ai-bubble); margin-right: 12px; }
+
+        .message .bubble { padding: 12px 18px; border-radius: 12px; font-size: 15px; line-height: 1.6; max-width: 70%; white-space: pre-wrap; word-break: break-word; }
+        .message.user .bubble { background: var(--user-bubble); border-bottom-right-radius: 4px; }
+        .message.assistant .bubble { background: var(--ai-bubble); border-bottom-left-radius: 4px; }
+        .message .bubble a { color: var(--accent); text-decoration: underline; }
+
+        .typing-indicator { display: none; max-width: 800px; margin: 0 auto 20px auto; }
+        .typing-indicator .dots { display: flex; gap: 4px; padding: 16px 18px; background: var(--ai-bubble); border-radius: 12px; width: fit-content; }
+        .typing-indicator .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-secondary); animation: bounce 1.4s infinite ease-in-out; }
+        .typing-indicator .dot:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-8px); } }
+
+        .chat-input-area { padding: 16px 24px; background: var(--bg-secondary); border-top: 1px solid var(--border); }
+        .input-container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+
+        .file-bar { display: none; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-input); border-radius: 8px; font-size: 13px; }
+        .file-bar .file-name { flex: 1; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-bar .remove-file { cursor: pointer; color: var(--text-secondary); font-size: 16px; }
+        .file-bar .remove-file:hover { color: var(--error); }
+
+        .input-row { display: flex; gap: 8px; align-items: flex-end; }
+        .input-row textarea { flex: 1; padding: 12px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; color: var(--text-primary); font-size: 15px; outline: none; resize: none; min-height: 48px; max-height: 120px; font-family: inherit; line-height: 1.5; }
+        .input-row textarea:focus { border-color: var(--accent); }
+        .input-row textarea::placeholder { color: var(--text-secondary); }
+
+        .icon-btn { width: 48px; height: 48px; border-radius: 12px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; transition: all 0.3s; }
+        .icon-btn.attach { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+        .icon-btn.attach:hover { border-color: var(--accent); color: var(--accent); }
+        .icon-btn.send { background: var(--accent); color: white; }
+        .icon-btn.send:hover { background: var(--accent-hover); }
+        .icon-btn.send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .download-link { display: inline-block; margin-top: 8px; padding: 6px 16px; background: var(--accent); color: white; border-radius: 6px; text-decoration: none; font-size: 13px; }
+        .download-link:hover { background: var(--accent-hover); }
+
+        .welcome-msg { text-align: center; padding: 60px 24px; max-width: 600px; margin: 0 auto; }
+        .welcome-msg h2 { font-size: 28px; margin-bottom: 12px; color: var(--accent); }
+        .welcome-msg p { color: var(--text-secondary); font-size: 15px; line-height: 1.8; margin-bottom: 24px; }
+        .quick-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .quick-action { padding: 8px 16px; background: var(--ai-bubble); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); cursor: pointer; font-size: 14px; transition: all 0.3s; }
+        .quick-action:hover { border-color: var(--accent); color: var(--accent); }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 500px; max-height: 70vh; }
+        .modal h3 { margin-bottom: 16px; color: var(--accent); }
+        .modal .doc-list { max-height: 300px; overflow-y: auto; }
+        .modal .doc-item { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .modal .close-btn { margin-top: 16px; width: 100%; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+        #fileInput { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="login-page" id="loginPage">
+    <div class="login-card">
+        <h1>🤖 企业文档智能助手</h1>
+        <p class="subtitle">基于 LangChain + LangGraph 的 ReAct Agent</p>
+        <div class="tab-bar">
+            <div class="tab active" onclick="switchTab('login')">登录</div>
+            <div class="tab" onclick="switchTab('register')">注册</div>
+        </div>
+        <div id="loginForm">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="loginUser" placeholder="输入用户名">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="loginPass" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()">
+            </div>
+            <button class="btn btn-primary" onclick="doLogin()">登 录</button>
+            <div class="msg-box" id="loginMsg"></div>
+        </div>
+        <div id="registerForm" style="display:none">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="regUser" placeholder="至少2个字符">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="regPass" placeholder="至少4个字符" onkeydown="if(event.key==='Enter')doRegister()">
+            </div>
+            <button class="btn btn-primary" onclick="doRegister()">注 册</button>
+            <div class="msg-box" id="regMsg"></div>
+        </div>
+    </div>
+</div>
+
+<div class="chat-page" id="chatPage">
+    <div class="chat-header">
+        <h1>🤖 企业文档智能助手</h1>
+        <div class="user-info">
+            <span id="displayName"></span>
+            <button class="header-btn" onclick="showDocs()">📄 知识库</button>
+            <button class="header-btn danger" onclick="clearHistory()">🗑️ 清除历史</button>
+            <button class="header-btn danger" onclick="doLogout()">退出</button>
+        </div>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+        <div class="welcome-msg" id="welcomeMsg">
+            <h2>👋 你好！</h2>
+            <p>我是企业文档智能助手，可以帮你查询公司制度、搜索文档内容、查询员工信息、修改文档等。<br>选择文档后输入修改要求，我还能帮你修改文档并返回文件。</p>
+            <div class="quick-actions">
+                <div class="quick-action" onclick="sendQuick('公司年假制度是什么？')">年假制度</div>
+                <div class="quick-action" onclick="sendQuick('列出所有员工信息')">员工信息</div>
+                <div class="quick-action" onclick="sendQuick('知识库有哪些文档？')">知识库文档</div>
+                <div class="quick-action" onclick="sendQuick('报销流程是什么？')">报销流程</div>
+            </div>
+        </div>
+    </div>
+    <div class="typing-indicator" id="typingIndicator">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--ai-bubble);display:flex;align-items:center;justify-content:center;font-size:16px;">🤖</div>
+            <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        </div>
+    </div>
+    <div class="chat-input-area">
+        <div class="input-container">
+            <div class="file-bar" id="fileBar">
+                <span>📎</span>
+                <span class="file-name" id="fileName"></span>
+                <span class="remove-file" onclick="removeFile()">✕</span>
+            </div>
+            <div class="input-row">
+                <button class="icon-btn attach" onclick="document.getElementById('fileInput').click()" title="选择文档">📎</button>
+                <textarea id="msgInput" rows="1" placeholder="输入问题，或选择文档后输入修改要求..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+                <button class="icon-btn send" id="sendBtn" onclick="sendMessage()" title="发送">➤</button>
+            </div>
+        </div>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf,.txt,.docx" onchange="onFileSelected(event)">
+</div>
+
+<div class="modal-overlay" id="docsModal">
+    <div class="modal">
+        <h3>📄 知识库文档</h3>
+        <div class="doc-list" id="docList"></div>
+        <button class="btn btn-primary close-btn" onclick="closeDocs()">关闭</button>
+    </div>
+</div>
+
+<script>
+let currentUser = null;
+let selectedFile = null;
+let isLoading = false;
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    if (tab === 'login') {
+        document.querySelectorAll('.tab')[0].classList.add('active');
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('registerForm').style.display = 'none';
+    } else {
+        document.querySelectorAll('.tab')[1].classList.add('active');
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'block';
+    }
+}
+
+async function doLogin() {
+    const username = document.getElementById('loginUser').value.trim();
+    const password = document.getElementById('loginPass').value.trim();
+    const msgEl = document.getElementById('loginMsg');
+    if (!username || !password) { msgEl.className = 'msg-box error'; msgEl.textContent = '请输入用户名和密码'; return; }
+    try {
+        const resp = await fetch('/api/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+        const data = await resp.json();
+        if (data.success) {
+            currentUser = username;
+            msgEl.className = 'msg-box success'; msgEl.textContent = '登录成功！';
+            setTimeout(() => { document.getElementById('loginPage').style.display = 'none'; document.getElementById('chatPage').style.display = 'flex'; document.getElementById('displayName').textContent = username; loadHistory(); }, 500);
+        } else { msgEl.className = 'msg-box error'; msgEl.textContent = data.message || '登录失败'; }
+    } catch (e) { msgEl.className = 'msg-box error'; msgEl.textContent = '网络错误'; }
+}
+
+async function doRegister() {
+    const username = document.getElementById('regUser').value.trim();
+    const password = document.getElementById('regPass').value.trim();
+    const msgEl = document.getElementById('regMsg');
+    if (!username || !password) { msgEl.className = 'msg-box error'; msgEl.textContent = '请输入用户名和密码'; return; }
+    try {
+        const resp = await fetch('/api/v1/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+        const data = await resp.json();
+        msgEl.className = data.success ? 'msg-box success' : 'msg-box error';
+        msgEl.textContent = data.message;
+    } catch (e) { msgEl.className = 'msg-box error'; msgEl.textContent = '网络错误'; }
+}
+
+function doLogout() {
+    currentUser = null; selectedFile = null;
+    document.getElementById('chatPage').style.display = 'none';
+    document.getElementById('loginPage').style.display = 'flex';
+    document.getElementById('chatMessages').innerHTML = '';
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPass').value = '';
+}
+
+async function loadHistory() {
+    if (!currentUser) return;
+    try {
+        const resp = await fetch(`/api/v1/history/${currentUser}`);
+        const data = await resp.json();
+        const messages = data.messages || [];
+        if (messages.length > 0) {
+            document.getElementById('welcomeMsg')?.remove();
+            messages.forEach(m => addMessageToUI(m.role, m.content));
+            scrollToBottom();
+        }
+    } catch (e) {}
+}
+
+async function sendMessage() {
+    if (isLoading) return;
+    const input = document.getElementById('msgInput');
+    const message = input.value.trim();
+    if (!message && !selectedFile) return;
+    if (!currentUser) return;
+    isLoading = true;
+    document.getElementById('sendBtn').disabled = true;
+    document.getElementById('welcomeMsg')?.remove();
+
+    if (selectedFile && message) {
+        addMessageToUI('user', `[修改文档] ${selectedFile.name}\n修改要求：${message}`);
+        input.value = ''; autoResize(input); showTyping(true);
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('instruction', message);
+        formData.append('username', currentUser);
+        try {
+            const resp = await fetch('/api/v1/modify-document', { method: 'POST', body: formData });
+            const data = await resp.json();
+            showTyping(false);
+            let content = data.message || '修改完成';
+            if (data.download_url) content += `\n\n<a class="download-link" href="${data.download_url}" download>⬇️ 下载修改后的文件</a>`;
+            addMessageToUI('assistant', data.success ? content : '修改失败: ' + data.message);
+        } catch (e) { showTyping(false); addMessageToUI('assistant', '网络错误，请重试'); }
+        removeFile();
+    } else if (selectedFile && !message) {
+        addMessageToUI('user', `[上传文档] ${selectedFile.name}`);
+        showTyping(true);
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        try {
+            const resp = await fetch('/api/v1/upload', { method: 'POST', body: formData });
+            const data = await resp.json();
+            showTyping(false);
+            addMessageToUI('assistant', data.detail?.message || data.detail || '上传成功');
+        } catch (e) { showTyping(false); addMessageToUI('assistant', '上传失败'); }
+        removeFile();
+    } else {
+        addMessageToUI('user', message);
+        input.value = ''; autoResize(input); showTyping(true);
+        try {
+            const resp = await fetch('/api/v1/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, session_id: currentUser }) });
+            const data = await resp.json();
+            showTyping(false);
+            addMessageToUI('assistant', data.response);
+        } catch (e) { showTyping(false); addMessageToUI('assistant', '网络错误，请重试'); }
+    }
+    isLoading = false; document.getElementById('sendBtn').disabled = false; scrollToBottom();
+}
+
+function sendQuick(text) { document.getElementById('msgInput').value = text; sendMessage(); }
+
+function addMessageToUI(role, content) {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = role === 'user' ? '👤' : '🤖';
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = content.replace(/\n/g, '<br>');
+    div.appendChild(avatar); div.appendChild(bubble); container.appendChild(div); scrollToBottom();
+}
+
+function showTyping(show) { document.getElementById('typingIndicator').style.display = show ? 'block' : 'none'; if (show) scrollToBottom(); }
+function scrollToBottom() { const el = document.getElementById('chatMessages'); setTimeout(() => el.scrollTop = el.scrollHeight, 50); }
+function onFileSelected(event) { const file = event.target.files[0]; if (file) { selectedFile = file; document.getElementById('fileName').textContent = file.name; document.getElementById('fileBar').style.display = 'flex'; } }
+function removeFile() { selectedFile = null; document.getElementById('fileInput').value = ''; document.getElementById('fileBar').style.display = 'none'; }
+
+async function showDocs() {
+    try {
+        const resp = await fetch('/api/v1/documents');
+        const data = await resp.json();
+        const list = document.getElementById('docList');
+        list.innerHTML = '';
+        if (data.documents && data.documents.length > 0) { data.documents.forEach(doc => { const item = document.createElement('div'); item.className = 'doc-item'; item.textContent = '📄 ' + doc; list.appendChild(item); }); }
+        else { list.innerHTML = '<div class="doc-item">暂无文档</div>'; }
+        document.getElementById('docsModal').classList.add('show');
+    } catch (e) {}
+}
+function closeDocs() { document.getElementById('docsModal').classList.remove('show'); }
+
+async function clearHistory() {
+    if (!currentUser) return;
+    if (!confirm('确定清除所有对话历史？')) return;
+    try {
+        await fetch(`/api/v1/history/${currentUser}`, { method: 'DELETE' });
+        const container = document.getElementById('chatMessages');
+        container.innerHTML = '<div class="welcome-msg" id="welcomeMsg"><h2>👋 你好！</h2><p>我是企业文档智能助手，可以帮你查询公司制度、搜索文档内容、查询员工信息、修改文档等。</p><div class="quick-actions"><div class="quick-action" onclick="sendQuick(\'公司年假制度是什么？\')">年假制度</div><div class="quick-action" onclick="sendQuick(\'列出所有员工信息\')">员工信息</div><div class="quick-action" onclick="sendQuick(\'知识库有哪些文档？\')">知识库文档</div><div class="quick-action" onclick="sendQuick(\'报销流程是什么？\')">报销流程</div></div></div>';
+    } catch (e) {}
+}
+
+function handleKey(event) { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); } }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+</script>
+</body>
+</html>
