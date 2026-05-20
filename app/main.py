@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from app.config import settings
 from app.api.routes import router
@@ -50,6 +51,11 @@ def create_app() -> FastAPI:
     # 注册 API 路由
     app.include_router(router, prefix="/api/v1", tags=["Agent API"])
 
+    # 根路径重定向到 Gradio 界面
+    @app.get("/")
+    async def root():
+        return RedirectResponse(url="/ui")
+
     # 健康检查
     @app.get("/health")
     async def health():
@@ -65,6 +71,9 @@ if __name__ == "__main__":
     # 确保数据目录存在
     os.makedirs(settings.DOCUMENTS_DIR, exist_ok=True)
     os.makedirs(settings.CHROMA_DIR, exist_ok=True)
+    os.makedirs(settings.DOCUMENTS_DIR, exist_ok=True)
+    os.makedirs(settings.CHROMA_DIR, exist_ok=True)
+    os.makedirs(os.path.join(settings.DATA_DIR, "conversations"), exist_ok=True)  # 新增
 
     # 创建 Gradio 界面并挂载到 FastAPI
     from app.gradio_app import create_gradio_app

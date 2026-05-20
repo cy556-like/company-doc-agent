@@ -14,25 +14,34 @@ from langchain_community.vectorstores import Chroma
 from app.config import settings
 
 
+# ===== 缓存向量数据库连接，避免每次搜索都重新创建 =====
+_vector_store = None
+_embeddings = None
+
+
 def get_embeddings():
-    """获取 Embedding 模型（使用 OpenAI 兼容接口）"""
-    # 智谱 GLM 用 embedding-3，OpenAI 用 text-embedding-v3，DeepSeek 用 text-embedding-v3
-    # 通过 .env 中的 EMBEDDING_MODEL 配置
-    embedding_model = getattr(settings, 'EMBEDDING_MODEL', 'embedding-3')
-    return OpenAIEmbeddings(
-        api_key=settings.LLM_API_KEY,
-        base_url=settings.LLM_BASE_URL,
-        model=embedding_model,
-    )
+    """获取 Embedding 模型（使用 OpenAI 兼容接口，单例缓存）"""
+    global _embeddings
+    if _embeddings is None:
+        embedding_model = getattr(settings, 'EMBEDDING_MODEL', 'embedding-3')
+        _embeddings = OpenAIEmbeddings(
+            api_key=settings.LLM_API_KEY,
+            base_url=settings.LLM_BASE_URL,
+            model=embedding_model,
+        )
+    return _embeddings
 
 
 def get_vector_store():
-    """获取 ChromaDB 向量数据库实例"""
-    embeddings = get_embeddings()
-    return Chroma(
-        persist_directory=settings.CHROMA_DIR,
-        embedding_function=embeddings,
-    )
+    """获取 ChromaDB 向量数据库实例（单例缓存）"""
+    global _vector_store
+    if _vector_store is None:
+        embeddings = get_embeddings()
+        _vector_store = Chroma(
+            persist_directory=settings.CHROMA_DIR,
+            embedding_function=embeddings,
+        )
+    return _vector_store
 
 
 def load_document(file_path: str) -> list:
@@ -139,3 +148,25 @@ def list_indexed_documents() -> list[str]:
         return sorted(list(sources))
     except Exception:
         return []
+
+def read_document_content(file_path: str) -> str:
+    """
+    读取文档的文本内容
+    支持：PDF、TXT、DOCX
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+
+    if ext == ".pdf":
+        loader = PyPDFLoader(file_path)
+        docs = loader.load()
+        return "\n\n".join([doc.page_content for doc in docs])
+    elif ext == ".txt":
+        loader = TextLoader(file_path, encoding="utf-8")
+        docs = loader.load()
+        return "\n\n".join([doc.page_content for doc in docs])
+    elif ext == ".docx":
+        loader = Docx2txtLoader(file_path)
+        docs = loader.load()
+        return "\n\n".join([doc.page_content for doc in docs])
+    else:
+        raise ValueError(f"不支持的文件格式: {ext}")

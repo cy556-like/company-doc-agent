@@ -7,7 +7,7 @@ from typing import Annotated
 from typing_extensions import TypedDict
 
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -74,13 +74,24 @@ def create_agent_graph():
     # 设置入口
     graph.set_entry_point("think")
 
+    # 限制最大循环次数，防止反复调用工具
+    def should_continue(state: AgentState):
+        """判断是否需要继续调用工具，最多循环3次"""
+        messages = state["messages"]
+        # 统计工具调用次数（ToolMessage 表示一次工具执行完成）
+        tool_count = sum(1 for m in messages if isinstance(m, ToolMessage))
+        if tool_count >= 3:
+            return END
+        # 正常判断 LLM 输出是否包含工具调用
+        return tools_condition(state)
+
     # 添加条件边：思考后判断是否需要调用工具
     graph.add_conditional_edges(
         "think",
-        tools_condition,      # 自动判断 LLM 输出中是否包含工具调用
+        should_continue,     # 用自定义判断替代 tools_condition
         {
             "tools": "act",   # 需要工具 → 去执行
-            END: END,         # 不需要工具 → 结束
+            END: END,         # 不需要工具或超过循环次数 → 结束
         },
     )
 
@@ -118,8 +129,11 @@ def chat(user_input: str, session_id: str = "default") -> str:
     # 获取该会话的历史消息
     history = get_session_history(session_id)
 
-    # 构建完整的消息列表 = 历史消息 + 新消息
-    all_messages = history.messages + [HumanMessage(content=user_input)]
+    # 只保留最近10条消息（5轮对话），减少 token 数量
+    recent_messages = history.messages[-10:]
+
+    # 构建完整的消息列表 = 最近历史 + 新消息
+    all_messages = recent_messages + [HumanMessage(content=user_input)]
 
     # 调用 Agent
     result = agent.invoke({"messages": all_messages})

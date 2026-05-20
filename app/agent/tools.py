@@ -104,11 +104,72 @@ def upload_document_tool(file_path: str) -> str:
     except Exception as e:
         return f"文档上传失败: {str(e)}"
 
+@tool
+def modify_document_tool(document_name: str, instruction: str) -> str:
+    """修改知识库中的文档内容。当用户要求修改、编辑、润色、重写某个文档时使用。
 
-# ===== 导出所有工具列表 =====
+    Args:
+        document_name: 要修改的文档名称
+        instruction: 修改要求，如「把语气改得更正式」「删除第三段」等
+    """
+    from app.rag.document import read_document_content
+    from langchain_openai import ChatOpenAI
+
+    # 查找文档文件
+    docs_dir = settings.DOCUMENTS_DIR
+    file_path = None
+    for f in os.listdir(docs_dir):
+        if document_name in f:
+            file_path = os.path.join(docs_dir, f)
+            break
+
+    if not file_path:
+        return f"未找到文档: {document_name}，请确认文档名称是否正确。"
+
+    try:
+        # 读取原文内容
+        original_content = read_document_content(file_path)
+    except Exception as e:
+        return f"读取文档失败: {str(e)}"
+
+    # 调用 LLM 修改文档
+    llm = ChatOpenAI(
+        api_key=settings.LLM_API_KEY,
+        base_url=settings.LLM_BASE_URL,
+        model=settings.LLM_MODEL,
+        temperature=0.3,
+    )
+
+    prompt = f"""请根据以下要求修改文档内容，直接输出修改后的完整文档内容，不要输出其他说明。
+
+原始文档内容：
+---
+{original_content}
+---
+
+修改要求：{instruction}
+
+请直接输出修改后的完整文档："""
+
+    from langchain_core.messages import HumanMessage
+    response = llm.invoke([HumanMessage(content=prompt)])
+
+    # 保存修改后的文档
+    base_name = os.path.splitext(os.path.basename(file_path))[0]
+    ext = os.path.splitext(file_path)[1]
+    modified_name = f"{base_name}_modified{ext}"
+    modified_path = os.path.join(docs_dir, modified_name)
+
+    with open(modified_path, "w", encoding="utf-8") as f:
+        f.write(response.content)
+
+    return f"文档已修改完成！修改后的文件已保存为: {modified_name}\n\n你可以在「文档修改」区域下载修改后的文件。"
+
+
 ALL_TOOLS = [
     search_documents_tool,
     lookup_employee_tool,
     list_documents_tool,
     upload_document_tool,
+    modify_document_tool,
 ]
