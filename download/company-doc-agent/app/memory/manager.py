@@ -2,9 +2,12 @@
 对话记忆管理模块
 管理每个用户/会话的对话历史，支持多轮对话
 支持文件持久化存储，重启后历史不丢失
+支持多会话管理：创建、列出、删除、重命名
 """
 import os
 import json
+import uuid
+import time
 from collections import defaultdict
 from typing import Optional
 
@@ -117,3 +120,117 @@ def get_history_messages(session_id: str) -> list[dict]:
         role = "user" if isinstance(msg, HumanMessage) else "assistant"
         messages.append({"role": role, "content": msg.content})
     return messages
+
+
+# ===== 多会话管理 =====
+
+def _get_user_chats_file(username: str) -> str:
+    """获取用户的会话索引文件路径"""
+    return os.path.join(settings.DATA_DIR, "users", f"{username}_chats.json")
+
+
+def _load_user_chats(username: str) -> list[dict]:
+    """加载用户的会话列表"""
+    chats_file = _get_user_chats_file(username)
+    if os.path.exists(chats_file):
+        try:
+            with open(chats_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+
+def _save_user_chats(username: str, chats: list[dict]) -> None:
+    """保存用户的会话列表"""
+    chats_file = _get_user_chats_file(username)
+    os.makedirs(os.path.dirname(chats_file), exist_ok=True)
+    with open(chats_file, "w", encoding="utf-8") as f:
+        json.dump(chats, f, ensure_ascii=False, indent=2)
+
+
+def create_chat(username: str, title: str = "新对话") -> dict:
+    """
+    为用户创建一个新的会话
+
+    Returns:
+        dict: 包含 chat_id 和 title
+    """
+    chat_id = f"{username}_{uuid.uuid4().hex[:8]}"
+    chats = _load_user_chats(username)
+
+    chat_info = {
+        "chat_id": chat_id,
+        "title": title,
+        "created_at": time.time(),
+        "updated_at": time.time(),
+    }
+    chats.insert(0, chat_info)  # 新会话放在最前面
+    _save_user_chats(username, chats)
+
+    return chat_info
+
+
+def list_chats(username: str) -> list[dict]:
+    """列出用户的所有会话，按更新时间倒序"""
+    chats = _load_user_chats(username)
+    # 更新每个会话的标题（取第一条用户消息的前20字）
+    for chat in chats:
+        chat_id = chat["chat_id"]
+        history = get_session_history(chat_id)
+        if history.messages and not chat.get("title_custom"):
+            # 取第一条用户消息作为标题
+            for msg in history.messages:
+                if isinstance(msg, HumanMessage):
+                    title = msg.content[:30].replace("\n", " ")
+                    if len(msg.content) > 30:
+                        title += "..."
+                    chat["title"] = title
+                    break
+    # 按更新时间倒序
+    chats.sort(key=lambda x: x.get("updated_at", 0), reverse=True)
+    _save_user_chats(username, chats)
+    return chats
+
+
+def delete_chat(username: str, chat_id: str) -> bool:
+    """删除用户的某个会话"""
+    chats = _load_user_chats(username)
+    chats = [c for c in chats if c["chat_id"] != chat_id]
+    _save_user_chats(username, chats)
+    # 同时清除对话历史文件
+    clear_session_history(chat_id)
+    return True
+
+
+def rename_chat(username: str, chat_id: str, new_title: str) -> bool:
+    """重命名用户的某个会话"""
+    chats = _load_user_chats(username)
+    for chat in chats:
+        if chat["chat_id"] == chat_id:
+            chat["title"] = new_title
+            chat["title_custom"] = True
+            chat["updated_at"] = time.time()
+            break
+    _save_user_chats(username, chats)
+    return True
+
+
+def update_chat_time(username: str, chat_id: str) -> None:
+    """更新会话的更新时间（发送消息时调用）"""
+    chats = _load_user_chats(username)
+    for chat in chats:
+        if chat["chat_id"] == chat_id:
+            chat["updated_at"] = time.time()
+            # 自动更新标题（取第一条用户消息）
+            if not chat.get("title_custom"):
+                history = get_session_history(chat_id)
+                for msg in history.messages:
+                    if isinstance(msg, HumanMessage):
+                        title = msg.content[:30].replace("\n", " ")
+                        if len(msg.content) > 30:
+                            title += "..."
+                        chat["title"] = title
+                        break
+            break
+    _save_user_chats(username, chats)

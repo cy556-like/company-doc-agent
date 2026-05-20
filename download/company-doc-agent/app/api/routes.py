@@ -7,12 +7,15 @@ import shutil
 import tempfile
 from typing import Optional
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
 from pydantic import BaseModel
 
 from app.agent.core import chat
 from app.rag.document import index_document, search_documents, list_indexed_documents
-from app.memory.manager import get_history_messages, clear_session_history
+from app.memory.manager import (
+    get_history_messages, clear_session_history,
+    create_chat, list_chats, delete_chat, rename_chat, update_chat_time,
+)
 from app.auth.user_manager import login_user, register_user
 from app.config import settings
 
@@ -44,6 +47,13 @@ class AuthRequest(BaseModel):
     password: str
 
 
+class RenameChatRequest(BaseModel):
+    """重命名会话请求"""
+    username: str
+    chat_id: str
+    new_title: str
+
+
 # ===== 认证接口 =====
 
 @router.post("/auth/login", summary="用户登录")
@@ -60,6 +70,36 @@ async def auth_register(req: AuthRequest):
     return result
 
 
+# ===== 会话管理接口 =====
+
+@router.post("/chats", summary="创建新会话")
+async def create_new_chat(username: str = Query(..., description="用户名"), title: str = Query("新对话", description="会话标题")):
+    """为用户创建一个新的聊天会话"""
+    chat_info = create_chat(username, title)
+    return {"success": True, "chat": chat_info}
+
+
+@router.get("/chats", summary="获取用户的所有会话")
+async def get_user_chats(username: str = Query(..., description="用户名")):
+    """获取用户的所有聊天会话列表"""
+    chats = list_chats(username)
+    return {"success": True, "chats": chats}
+
+
+@router.delete("/chats/{chat_id}", summary="删除会话")
+async def delete_user_chat(chat_id: str, username: str = Query(..., description="用户名")):
+    """删除指定的聊天会话"""
+    delete_chat(username, chat_id)
+    return {"success": True, "message": "会话已删除"}
+
+
+@router.put("/chats/{chat_id}/rename", summary="重命名会话")
+async def rename_user_chat(chat_id: str, req: RenameChatRequest):
+    """重命名指定的聊天会话"""
+    rename_chat(req.username, req.chat_id, req.new_title)
+    return {"success": True, "message": "会话已重命名"}
+
+
 # ===== 核心 Agent 接口 =====
 
 @router.post("/chat", response_model=ChatResponse, summary="与 Agent 对话")
@@ -73,6 +113,15 @@ async def chat_api(req: ChatRequest):
     """
     try:
         response = chat(req.message, req.session_id)
+        # 更新会话时间（从 session_id 中提取 username）
+        # session_id 格式: username_xxxxx
+        parts = req.session_id.rsplit("_", 1)
+        if len(parts) == 2:
+            username = parts[0]
+            try:
+                update_chat_time(username, req.session_id)
+            except Exception:
+                pass
         return ChatResponse(response=response, session_id=req.session_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent 处理失败: {str(e)}")
