@@ -21,6 +21,7 @@
             --border: #2a2a4a;
             --success: #4caf50;
             --error: #f44336;
+            --warning: #ff9800;
         }
 
         body {
@@ -133,18 +134,43 @@
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
         .modal-overlay.show { display: flex; }
-        .modal { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 500px; max-height: 70vh; }
+        .modal { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 520px; max-height: 75vh; display: flex; flex-direction: column; }
         .modal h3 { margin-bottom: 16px; color: var(--accent); }
-        .modal .doc-list { max-height: 300px; overflow-y: auto; }
-        .modal .doc-item { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+
+        .modal .upload-section { padding: 16px; background: var(--bg-input); border: 2px dashed var(--border); border-radius: 10px; margin-bottom: 16px; text-align: center; transition: all 0.3s; cursor: pointer; }
+        .modal .upload-section:hover { border-color: var(--accent); background: rgba(79, 140, 247, 0.05); }
+        .modal .upload-section.dragover { border-color: var(--accent); background: rgba(79, 140, 247, 0.1); }
+        .modal .upload-section .upload-icon { font-size: 32px; margin-bottom: 8px; }
+        .modal .upload-section .upload-text { font-size: 14px; color: var(--text-secondary); }
+        .modal .upload-section .upload-text strong { color: var(--accent); }
+        .modal .upload-section .upload-hint { font-size: 12px; color: var(--text-secondary); margin-top: 6px; opacity: 0.7; }
+
+        .modal .upload-progress { display: none; margin-bottom: 16px; padding: 12px 16px; background: var(--bg-input); border-radius: 8px; }
+        .modal .upload-progress .progress-file { font-size: 14px; margin-bottom: 8px; }
+        .modal .upload-progress .progress-bar-bg { width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+        .modal .upload-progress .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; width: 0%; }
+        .modal .upload-progress .progress-status { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+        .modal .upload-progress .progress-status.success { color: var(--success); }
+        .modal .upload-progress .progress-status.error { color: var(--error); }
+
+        .modal .divider { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; color: var(--text-secondary); font-size: 13px; }
+        .modal .divider::before, .modal .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+        .modal .doc-list { max-height: 250px; overflow-y: auto; }
+        .modal .doc-item { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .modal .doc-item .doc-icon { font-size: 16px; }
+        .modal .doc-item .doc-name { flex: 1; }
+        .modal .doc-empty { text-align: center; padding: 24px; color: var(--text-secondary); font-size: 14px; }
+
         .modal .close-btn { margin-top: 16px; width: 100%; }
+
+        #kbFileInput { display: none; }
+        #fileInput { display: none; }
 
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
-
-        #fileInput { display: none; }
     </style>
 </head>
 <body>
@@ -229,10 +255,34 @@
     <input type="file" id="fileInput" accept=".pdf,.txt,.docx" onchange="onFileSelected(event)">
 </div>
 
+<!-- 知识库弹窗 -->
 <div class="modal-overlay" id="docsModal">
     <div class="modal">
-        <h3>📄 知识库文档</h3>
-        <div class="doc-list" id="docList"></div>
+        <h3>📄 知识库管理</h3>
+
+        <!-- 上传区域 -->
+        <div class="upload-section" id="uploadZone" onclick="document.getElementById('kbFileInput').click()">
+            <div class="upload-icon">📤</div>
+            <div class="upload-text">点击或拖拽文件到此处 <strong>上传到知识库</strong></div>
+            <div class="upload-hint">支持 PDF、TXT、DOCX 格式</div>
+        </div>
+        <input type="file" id="kbFileInput" accept=".pdf,.txt,.docx" onchange="onKbFileSelected(event)" multiple>
+
+        <!-- 上传进度 -->
+        <div class="upload-progress" id="uploadProgress">
+            <div class="progress-file" id="progressFileName">正在上传...</div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBarFill"></div></div>
+            <div class="progress-status" id="progressStatus">上传中...</div>
+        </div>
+
+        <!-- 分割线 -->
+        <div class="divider">已索引文档</div>
+
+        <!-- 文档列表 -->
+        <div class="doc-list" id="docList">
+            <div class="doc-empty">加载中...</div>
+        </div>
+
         <button class="btn btn-primary close-btn" onclick="closeDocs()">关闭</button>
     </div>
 </div>
@@ -318,6 +368,7 @@ async function sendMessage() {
     document.getElementById('welcomeMsg')?.remove();
 
     if (selectedFile && message) {
+        // 有文件 + 有文字 = 修改文档
         addMessageToUI('user', `[修改文档] ${selectedFile.name}\n修改要求：${message}`);
         input.value = ''; autoResize(input); showTyping(true);
         const formData = new FormData();
@@ -334,6 +385,7 @@ async function sendMessage() {
         } catch (e) { showTyping(false); addMessageToUI('assistant', '网络错误，请重试'); }
         removeFile();
     } else if (selectedFile && !message) {
+        // 只有文件 = 上传到知识库
         addMessageToUI('user', `[上传文档] ${selectedFile.name}`);
         showTyping(true);
         const formData = new FormData();
@@ -342,10 +394,12 @@ async function sendMessage() {
             const resp = await fetch('/api/v1/upload', { method: 'POST', body: formData });
             const data = await resp.json();
             showTyping(false);
-            addMessageToUI('assistant', data.detail?.message || data.detail || '上传成功');
-        } catch (e) { showTyping(false); addMessageToUI('assistant', '上传失败'); }
+            const msg = data.detail?.message || (typeof data.detail === 'string' ? data.detail : '上传成功');
+            addMessageToUI('assistant', msg);
+        } catch (e) { showTyping(false); addMessageToUI('assistant', '上传失败，请重试'); }
         removeFile();
     } else {
+        // 只有文字 = 普通对话
         addMessageToUI('user', message);
         input.value = ''; autoResize(input); showTyping(true);
         try {
@@ -378,18 +432,139 @@ function scrollToBottom() { const el = document.getElementById('chatMessages'); 
 function onFileSelected(event) { const file = event.target.files[0]; if (file) { selectedFile = file; document.getElementById('fileName').textContent = file.name; document.getElementById('fileBar').style.display = 'flex'; } }
 function removeFile() { selectedFile = null; document.getElementById('fileInput').value = ''; document.getElementById('fileBar').style.display = 'none'; }
 
+// ===== 知识库弹窗 =====
+
 async function showDocs() {
+    // 打开弹窗并加载文档列表
+    document.getElementById('docsModal').classList.add('show');
+    await loadDocList();
+}
+
+function closeDocs() {
+    document.getElementById('docsModal').classList.remove('show');
+    // 隐藏上传进度
+    document.getElementById('uploadProgress').style.display = 'none';
+}
+
+async function loadDocList() {
+    const list = document.getElementById('docList');
+    list.innerHTML = '<div class="doc-empty">加载中...</div>';
     try {
         const resp = await fetch('/api/v1/documents');
         const data = await resp.json();
-        const list = document.getElementById('docList');
         list.innerHTML = '';
-        if (data.documents && data.documents.length > 0) { data.documents.forEach(doc => { const item = document.createElement('div'); item.className = 'doc-item'; item.textContent = '📄 ' + doc; list.appendChild(item); }); }
-        else { list.innerHTML = '<div class="doc-item">暂无文档</div>'; }
-        document.getElementById('docsModal').classList.add('show');
-    } catch (e) {}
+        if (data.documents && data.documents.length > 0) {
+            data.documents.forEach(doc => {
+                const item = document.createElement('div');
+                item.className = 'doc-item';
+                // 根据扩展名选择图标
+                let icon = '📄';
+                if (doc.endsWith('.pdf')) icon = '📕';
+                else if (doc.endsWith('.docx')) icon = '📘';
+                else if (doc.endsWith('.txt')) icon = '📝';
+                item.innerHTML = `<span class="doc-icon">${icon}</span><span class="doc-name">${doc}</span>`;
+                list.appendChild(item);
+            });
+        } else {
+            list.innerHTML = '<div class="doc-empty">暂无文档，请上传</div>';
+        }
+    } catch (e) {
+        list.innerHTML = '<div class="doc-empty">加载失败</div>';
+    }
 }
-function closeDocs() { document.getElementById('docsModal').classList.remove('show'); }
+
+// 知识库上传文件
+async function onKbFileSelected(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+        await uploadToKnowledgeBase(files[i]);
+    }
+    // 清空 input 以便重复选择同一文件
+    document.getElementById('kbFileInput').value = '';
+    // 上传完成后刷新文档列表
+    await loadDocList();
+}
+
+async function uploadToKnowledgeBase(file) {
+    const progressEl = document.getElementById('uploadProgress');
+    const fileNameEl = document.getElementById('progressFileName');
+    const barFill = document.getElementById('progressBarFill');
+    const statusEl = document.getElementById('progressStatus');
+
+    // 显示进度
+    progressEl.style.display = 'block';
+    fileNameEl.textContent = `📎 ${file.name}`;
+    barFill.style.width = '10%';
+    statusEl.textContent = '上传中...';
+    statusEl.className = 'progress-status';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        barFill.style.width = '30%';
+        const resp = await fetch('/api/v1/upload', { method: 'POST', body: formData });
+        barFill.style.width = '80%';
+        const data = await resp.json();
+
+        if (resp.ok) {
+            barFill.style.width = '100%';
+            statusEl.textContent = '✅ 上传成功！文档已索引到知识库';
+            statusEl.className = 'progress-status success';
+        } else {
+            barFill.style.width = '100%';
+            barFill.style.background = 'var(--error)';
+            statusEl.textContent = '❌ 上传失败：' + (data.detail || '未知错误');
+            statusEl.className = 'progress-status error';
+        }
+    } catch (e) {
+        barFill.style.width = '100%';
+        barFill.style.background = 'var(--error)';
+        statusEl.textContent = '❌ 网络错误，请重试';
+        statusEl.className = 'progress-status error';
+    }
+
+    // 3秒后隐藏进度
+    setTimeout(() => {
+        progressEl.style.display = 'none';
+        barFill.style.background = 'var(--accent)';
+    }, 3000);
+}
+
+// 拖拽上传支持
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadZone = document.getElementById('uploadZone');
+
+    uploadZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            // 逐个上传
+            (async () => {
+                for (let i = 0; i < files.length; i++) {
+                    await uploadToKnowledgeBase(files[i]);
+                }
+                await loadDocList();
+            })();
+        }
+    });
+});
 
 async function clearHistory() {
     if (!currentUser) return;
