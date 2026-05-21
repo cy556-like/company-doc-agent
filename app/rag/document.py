@@ -13,6 +13,9 @@ from langchain_community.vectorstores import Chroma
 
 from app.config import settings
 
+# Embedding API 单次最大批量数（智谱限制 64 条）
+EMBEDDING_BATCH_SIZE = 50
+
 
 def get_embeddings():
     """获取 Embedding 模型（使用 OpenAI 兼容接口）"""
@@ -70,7 +73,8 @@ def split_documents(docs: list, chunk_size: int = 500, chunk_overlap: int = 100)
 
 def index_document(file_path: str, filename: str = None) -> dict:
     """
-    完整的文档索引流程：加载 → 分块 → 向量化 → 存储
+    完整的文档索引流程：加载 → 分块 → 分批向量化 → 存储
+    分批写入，避免 Embedding API 单次批量超限（智谱限制64条/次）
 
     Returns:
         dict: 包含分块数量和状态信息
@@ -88,15 +92,45 @@ def index_document(file_path: str, filename: str = None) -> dict:
     # 3. 分块
     chunks = split_documents(docs)
 
-    # 4. 向量化并存储
+    if not chunks:
+        return {
+            "filename": filename,
+            "chunks": 0,
+            "status": "success",
+            "message": f"文档 {filename} 内容为空，无需索引",
+        }
+
+    # 4. 分批向量化并存储（每批不超过 EMBEDDING_BATCH_SIZE 条）
     vector_store = get_vector_store()
-    vector_store.add_documents(chunks)
+    total_chunks = len(chunks)
+    batch_count = (total_chunks + EMBEDDING_BATCH_SIZE - 1) // EMBEDDING_BATCH_SIZE
+
+    for i in range(batch_count):
+        start = i * EMBEDDING_BATCH_SIZE
+        end = min(start + EMBEDDING_BATCH_SIZE, total_chunks)
+        batch = chunks[start:end]
+        try:
+            vector_store.add_documents(batch)
+        except Exception as e:
+            # 如果中途失败，尝试回滚已写入的数据
+            try:
+                # 查找该文档已写入的分块并删除
+                collection = vector_store._collection
+                existing = collection.get(
+                    where={"source_file": filename},
+                    include=["metadatas"],
+                )
+                if existing.get("ids"):
+                    collection.delete(ids=existing["ids"])
+            except Exception:
+                pass
+            raise RuntimeError(f"第 {i+1}/{batch_count} 批向量化失败（分块 {start+1}-{end}）: {str(e)}")
 
     return {
         "filename": filename,
-        "chunks": len(chunks),
+        "chunks": total_chunks,
         "status": "success",
-        "message": f"文档 {filename} 已成功索引，共 {len(chunks)} 个分块",
+        "message": f"文档 {filename} 已成功索引，共 {total_chunks} 个分块（分 {batch_count} 批写入）",
     }
 
 
