@@ -174,6 +174,7 @@ TOOL_DISPLAY_NAMES = {
     "list_documents_tool": "列出文档",
     "upload_document_tool": "上传文档",
     "modify_document_tool": "修改文档",
+    "delete_document_tool": "删除文档",
 }
 
 
