@@ -15,13 +15,13 @@
             --bg-input: #ffffff;
             --text-primary: #1a1a1a;
             --text-secondary: #6b6b6b;
-            --accent: #10a37f;
-            --accent-hover: #0d8c6d;
+            --accent: #1a1a1a;
+            --accent-hover: #000000;
             --user-bubble: #f7f7f8;
             --ai-bubble: #ffffff;
             --border: #e5e5e5;
             --border-sidebar: #e5e5e5;
-            --success: #10a37f;
+            --success: #16a34a;
             --error: #ef4444;
             --warning: #f59e0b;
             --sidebar-width: 260px;
@@ -60,7 +60,7 @@
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
         .form-group input { width: 100%; padding: 11px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; transition: border 0.2s, box-shadow 0.2s; }
-        .form-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(16,163,127,0.12); }
+        .form-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(26,26,26,0.08); }
         .form-group input::placeholder { color: #b0b0b0; }
         .btn { width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .btn-primary { background: var(--text-primary); color: white; }
@@ -318,7 +318,7 @@
         .file-bar .remove-file:hover { color: var(--error); }
         .input-row { display: flex; gap: 8px; align-items: flex-end; }
         .input-row textarea { flex: 1; padding: 11px 16px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; color: var(--text-primary); font-size: 15px; outline: none; resize: none; min-height: 48px; max-height: 120px; font-family: inherit; line-height: 1.5; transition: border 0.2s, box-shadow 0.2s; }
-        .input-row textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(16,163,127,0.1); }
+        .input-row textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(26,26,26,0.08); }
         .input-row textarea::placeholder { color: #b0b0b0; }
         .icon-btn { width: 44px; height: 44px; border-radius: 10px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.2s; }
         .icon-btn.attach { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
@@ -335,7 +335,7 @@
         .welcome-msg p { color: var(--text-secondary); font-size: 15px; line-height: 1.8; margin-bottom: 28px; }
         .quick-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
         .quick-action { padding: 9px 16px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); cursor: pointer; font-size: 13px; transition: all 0.15s; font-weight: 500; }
-        .quick-action:hover { border-color: var(--accent); color: var(--accent); background: rgba(16,163,127,0.04); }
+        .quick-action:hover { border-color: var(--accent); color: var(--accent); background: rgba(26,26,26,0.04); }
 
         /* ===== Knowledge Base Modal ===== */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
@@ -343,8 +343,8 @@
         .modal { background: #ffffff; border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 520px; max-height: 75vh; display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
         .modal h3 { margin-bottom: 16px; color: var(--text-primary); font-size: 17px; font-weight: 600; }
         .modal .upload-section { padding: 20px; background: var(--bg-secondary); border: 2px dashed var(--border); border-radius: 10px; margin-bottom: 16px; text-align: center; transition: all 0.2s; cursor: pointer; }
-        .modal .upload-section:hover { border-color: var(--accent); background: rgba(16,163,127,0.03); }
-        .modal .upload-section.dragover { border-color: var(--accent); background: rgba(16,163,127,0.06); }
+        .modal .upload-section:hover { border-color: var(--accent); background: rgba(26,26,26,0.03); }
+        .modal .upload-section.dragover { border-color: var(--accent); background: rgba(26,26,26,0.05); }
         .modal .upload-section .upload-icon { font-size: 28px; margin-bottom: 8px; opacity: 0.6; }
         .modal .upload-section .upload-text { font-size: 14px; color: var(--text-secondary); }
         .modal .upload-section .upload-text strong { color: var(--accent); font-weight: 600; }
@@ -395,7 +395,7 @@
         .rename-card { background: #ffffff; border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 360px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
         .rename-card h3 { margin-bottom: 16px; color: var(--text-primary); font-size: 16px; font-weight: 600; }
         .rename-card input { width: 100%; padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; margin-bottom: 16px; transition: border 0.2s; }
-        .rename-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(16,163,127,0.1); }
+        .rename-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(26,26,26,0.08); }
         .rename-card .rename-btns { display: flex; gap: 10px; }
         .rename-card .rename-btns button { flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; transition: all 0.15s; font-weight: 500; }
         .rename-card .cancel-btn { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); }
