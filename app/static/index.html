@@ -290,7 +290,7 @@
         .model-select:hover, .model-select:focus { border-color: var(--text-primary); }
         .model-select option { background: #ffffff; color: var(--text-primary); }
 
-        .chat-messages { flex: 1; overflow-y: auto; padding: 24px; background: var(--bg-chat); }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 24px; background: var(--bg-chat); transition: all 0.3s; }
 
         .message { display: flex; margin-bottom: 24px; max-width: 800px; margin-left: auto; margin-right: auto; }
         .message.user { flex-direction: row-reverse; }
@@ -310,7 +310,37 @@
         .typing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
         @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
 
-        .chat-input-area { padding: 16px 24px 20px; background: var(--bg-chat); }
+        .chat-input-area { padding: 16px 24px 20px; background: var(--bg-chat); transition: all 0.3s; }
+        /* ===== 空对话状态：输入框居中 ===== */
+        .chat-main.empty-state .chat-messages {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .chat-main.empty-state .chat-input-area {
+            position: absolute;
+            bottom: auto;
+            left: 50%;
+            top: 62%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            max-width: 800px;
+            padding: 0 24px;
+            background: transparent;
+        }
+        .chat-main.empty-state .input-container {
+            max-width: 680px;
+            margin: 0 auto;
+        }
+        .chat-main.empty-state .welcome-msg {
+            position: absolute;
+            left: 50%;
+            top: 22%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 600px;
+        }
         .input-container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
         .file-bar { display: none; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
         .file-bar .file-name { flex: 1; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -928,6 +958,7 @@ async function loadChatHistory(chatId) {
         const resp = await fetch(`/api/v1/history/${chatId}`);
         const data = await resp.json();
         const messages = data.messages || [];
+        document.querySelector('.chat-main')?.classList.toggle('empty-state', messages.length === 0);
         if (messages.length === 0) {
             container.innerHTML = `<div class="welcome-msg" id="welcomeMsg">
                 <h2>👋 你好！</h2>
@@ -985,6 +1016,7 @@ async function confirmRename() {
 }
 
 function clearChatUI() {
+    document.querySelector('.chat-main')?.classList.add('empty-state');
     const container = document.getElementById('chatMessages');
     container.innerHTML = `<div class="welcome-msg" id="welcomeMsg">
         <h2>👋 你好！</h2>
@@ -1193,6 +1225,21 @@ async function streamChat(url, options, bubble) {
     }
 }
 
+
+// 更新空对话状态（输入框居中 vs 底部）
+function updateEmptyState() {
+    const chatMain = document.querySelector('.chat-main');
+    const chatMessages = document.getElementById('chatMessages');
+    if (!chatMain) return;
+    // 检查是否有实际消息（排除welcome-msg）
+    const hasMessages = chatMessages.querySelector('.message');
+    if (hasMessages) {
+        chatMain.classList.remove('empty-state');
+    } else {
+        chatMain.classList.add('empty-state');
+    }
+}
+
 async function sendMessage() {
     if (isLoading) return;
     if (!currentChatId) { alert('请先创建或选择一个对话'); return; }
@@ -1202,6 +1249,7 @@ async function sendMessage() {
     isLoading = true;
     document.getElementById('sendBtn').disabled = true;
     document.getElementById('welcomeMsg')?.remove();
+    document.querySelector('.chat-main')?.classList.remove('empty-state');
 
     if (selectedFile && message) {
         // ===== 文件 + 消息 → 流式 =====
@@ -1263,6 +1311,9 @@ function showTyping(show) { document.getElementById('typingIndicator').style.dis
 function scrollToBottom() { const el = document.getElementById('chatMessages'); setTimeout(() => el.scrollTop = el.scrollHeight, 50); }
 function onFileSelected(event) { const file = event.target.files[0]; if (file) { selectedFile = file; document.getElementById('fileName').textContent = file.name; document.getElementById('fileBar').style.display = 'flex'; document.getElementById('msgInput').placeholder = '针对此文件输入问题，或修改要求...'; } }
 function removeFile() { selectedFile = null; document.getElementById('fileInput').value = ''; document.getElementById('fileBar').style.display = 'none'; document.getElementById('msgInput').placeholder = '输入问题...'; }
+
+// ===== 初始化空状态 =====
+setTimeout(() => { document.querySelector('.chat-main')?.classList.add('empty-state'); }, 100);
 
 // ===== 知识库弹窗 =====
 
