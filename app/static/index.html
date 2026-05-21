@@ -353,6 +353,25 @@
         .modal .doc-item { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 14px; display: flex; align-items: center; gap: 8px; }
         .modal .doc-item .doc-icon { font-size: 16px; }
         .modal .doc-item .doc-name { flex: 1; }
+        .modal .doc-item .doc-delete-btn {
+            padding: 3px 10px;
+            background: transparent;
+            border: 1px solid var(--error);
+            border-radius: 4px;
+            color: var(--error);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            opacity: 0;
+        }
+        .modal .doc-item:hover .doc-delete-btn {
+            opacity: 1;
+        }
+        .modal .doc-item .doc-delete-btn:hover {
+            background: var(--error);
+            color: white;
+        }
         .modal .doc-empty { text-align: center; padding: 24px; color: var(--text-secondary); font-size: 14px; }
         .modal .close-btn { margin-top: 16px; width: 100%; }
 
@@ -1260,7 +1279,7 @@ async function loadDocList() {
                 if (doc.endsWith('.pdf')) icon = '📕';
                 else if (doc.endsWith('.docx')) icon = '📘';
                 else if (doc.endsWith('.txt')) icon = '📝';
-                item.innerHTML = `<span class="doc-icon">${icon}</span><span class="doc-name">${doc}</span>`;
+                item.innerHTML = `<span class="doc-icon">${icon}</span><span class="doc-name">${doc}</span><button class="doc-delete-btn" onclick="deleteDocument('${doc.replace(/'/g, "\\'")}', this)">删除</button>`;
                 list.appendChild(item);
             });
         } else {
@@ -1277,6 +1296,40 @@ async function onKbFileSelected(event) {
     }
     document.getElementById('kbFileInput').value = '';
     await loadDocList();
+}
+
+
+async function deleteDocument(filename, btnEl) {
+    if (!confirm(`确定要删除文档 "${filename}" 吗？此操作不可恢复！`)) return;
+    const docItem = btnEl.closest('.doc-item');
+    btnEl.disabled = true;
+    btnEl.textContent = '删除中...';
+    try {
+        const resp = await fetch(`/api/v1/documents/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+        const data = await resp.json();
+        if (resp.ok && data.status === 'success') {
+            // 移除该行，带动画效果
+            docItem.style.transition = 'all 0.3s';
+            docItem.style.opacity = '0';
+            docItem.style.transform = 'translateX(20px)';
+            setTimeout(() => {
+                docItem.remove();
+                // 检查是否还有文档
+                const list = document.getElementById('docList');
+                if (list.children.length === 0) {
+                    list.innerHTML = '<div class="doc-empty">暂无文档，请上传</div>';
+                }
+            }, 300);
+        } else {
+            alert('删除失败：' + (data.detail || '未知错误'));
+            btnEl.disabled = false;
+            btnEl.textContent = '删除';
+        }
+    } catch (e) {
+        alert('删除失败：网络错误');
+        btnEl.disabled = false;
+        btnEl.textContent = '删除';
+    }
 }
 
 async function uploadToKnowledgeBase(file) {
