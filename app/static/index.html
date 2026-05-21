@@ -55,7 +55,7 @@
         .login-card .subtitle { text-align: center; color: var(--text-secondary); margin-bottom: 30px; font-size: 13px; letter-spacing: 0.3px; }
         .login-card .tab-bar { display: flex; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
         .login-card .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; color: var(--text-secondary); border-bottom: 2px solid transparent; transition: all 0.2s; font-size: 14px; font-weight: 500; }
-        .login-card .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .login-card .tab.active { color: var(--text-primary); border-bottom-color: var(--text-primary); }
         .login-card .tab:hover:not(.active) { color: var(--text-primary); }
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
@@ -63,8 +63,8 @@
         .form-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(16,163,127,0.12); }
         .form-group input::placeholder { color: #b0b0b0; }
         .btn { width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .btn-primary { background: var(--accent); color: white; }
-        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-primary { background: var(--text-primary); color: white; }
+        .btn-primary:hover { background: #000000; }
         .btn-primary:active { transform: scale(0.98); }
         .msg-box { text-align: center; margin-top: 12px; font-size: 13px; min-height: 20px; }
         .msg-box.error { color: var(--error); }
@@ -287,7 +287,7 @@
         .header-btn:hover { border-color: #ccc; color: var(--text-primary); background: var(--bg-secondary); }
         .header-btn.danger:hover { border-color: var(--error); color: var(--error); background: rgba(239,68,68,0.04); }
         .model-select { padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; cursor: pointer; outline: none; transition: border 0.2s; }
-        .model-select:hover, .model-select:focus { border-color: var(--accent); }
+        .model-select:hover, .model-select:focus { border-color: var(--text-primary); }
         .model-select option { background: #ffffff; color: var(--text-primary); }
 
         .chat-messages { flex: 1; overflow-y: auto; padding: 24px; background: var(--bg-chat); }
@@ -352,7 +352,7 @@
         .modal .upload-progress { display: none; margin-bottom: 16px; padding: 12px 16px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border); }
         .modal .upload-progress .progress-file { font-size: 14px; margin-bottom: 8px; color: var(--text-primary); }
         .modal .upload-progress .progress-bar-bg { width: 100%; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
-        .modal .upload-progress .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; width: 0%; }
+        .modal .upload-progress .progress-bar-fill { height: 100%; background: var(--text-primary); border-radius: 3px; transition: width 0.3s; width: 0%; }
         .modal .upload-progress .progress-status { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
         .modal .upload-progress .progress-status.success { color: var(--success); }
         .modal .upload-progress .progress-status.error { color: var(--error); }
@@ -400,8 +400,8 @@
         .rename-card .rename-btns button { flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; transition: all 0.15s; font-weight: 500; }
         .rename-card .cancel-btn { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); }
         .rename-card .cancel-btn:hover { background: #e8e8e9; }
-        .rename-card .confirm-btn { background: var(--accent); color: white; }
-        .rename-card .confirm-btn:hover { background: var(--accent-hover); }
+        .rename-card .confirm-btn { background: var(--text-primary); color: white; }
+        .rename-card .confirm-btn:hover { background: #000000; }
 
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -558,7 +558,7 @@
         .stream-cursor {
             display: inline;
             animation: blink 0.6s step-end infinite;
-            color: var(--accent);
+            color: var(--text-primary);
             font-weight: bold;
         }
         @keyframes blink {
