@@ -1064,26 +1064,61 @@ function showToast(msg, duration) {
     setTimeout(() => toast.classList.remove('show'), duration);
 }
 
+// ===== 通用复制到剪贴板（兼容HTTP/HTTPS） =====
+function copyToClipboard(text, onSuccess, onFail) {
+    // 优先尝试 navigator.clipboard（HTTPS/localhost 下可用）
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            if (onSuccess) onSuccess();
+        }).catch(() => {
+            // clipboard API 失败，走 fallback
+            if (!fallbackCopy(text)) {
+                if (onFail) onFail();
+            } else {
+                if (onSuccess) onSuccess();
+            }
+        });
+    } else {
+        // HTTP 环境，直接走 fallback
+        if (!fallbackCopy(text)) {
+            if (onFail) onFail();
+        } else {
+            if (onSuccess) onSuccess();
+        }
+    }
+}
+
+function fallbackCopy(text) {
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        // 防止页面滚动
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '-9999px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+    } catch (e) {
+        return false;
+    }
+}
+
 // ===== 复制代码块 =====
 function copyCodeBlock(codeId, btn) {
     const codeEl = document.getElementById(codeId);
     if (!codeEl) return;
     const text = codeEl.textContent;
-    navigator.clipboard.writeText(text).then(() => {
+    copyToClipboard(text, () => {
         btn.textContent = '已复制';
         btn.classList.add('copied');
         setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
-    }).catch(() => {
-        // fallback
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        btn.textContent = '已复制';
-        btn.classList.add('copied');
-        setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
+    }, () => {
+        showToast('复制失败，请手动选择代码复制');
     });
 }
 
@@ -1706,17 +1741,10 @@ function addMessageToUI(role, content) {
 function copyMessage(btn) {
     const bubble = btn.closest('.message').querySelector('.bubble');
     const text = bubble.textContent || bubble.innerText;
-    navigator.clipboard.writeText(text).then(() => {
+    copyToClipboard(text, () => {
         showToast('已复制到剪贴板');
-    }).catch(() => {
-        // fallback
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showToast('已复制到剪贴板');
+    }, () => {
+        showToast('复制失败，请手动选择文本复制');
     });
 }
 
