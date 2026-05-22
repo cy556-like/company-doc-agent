@@ -58,6 +58,7 @@
         [data-theme="dark"] .form-group input { background: #1a1a1a; border-color: #3a3a3a; color: #e5e5e5; }
         [data-theme="dark"] .new-chat-btn { border-color: #3a3a3a; }
         [data-theme="dark"] .new-chat-btn:hover { background: #2a2a2a; border-color: #4a4a4a; }
+        [data-theme="dark"] .mode-switcher-box { background: #2a2a2a; border-color: #3a3a3a; }
         [data-theme="dark"] .chat-item:hover { background: #2a2a2a; }
         [data-theme="dark"] .chat-item.active { background: #333; }
         [data-theme="dark"] .model-select { background: #2a2a2a; border-color: #3a3a3a; color: #e5e5e5; }
@@ -149,16 +150,30 @@
             height: 100vh;
             transition: all 0.3s;
         }
+        /* 收起时变成窄图标栏 */
         .sidebar.collapsed {
-            width: 0;
-            min-width: 0;
-            overflow: hidden;
-            border-right: none;
+            width: 56px;
+            min-width: 56px;
         }
+        .sidebar.collapsed .sidebar-header { padding: 8px; }
+        .sidebar.collapsed .mode-switcher-box { padding: 4px; gap: 4px; }
+        .sidebar.collapsed .mode-switcher-box .mode-label { display: none; }
+        .sidebar.collapsed .mode-switcher-box .mode-btn { padding: 8px; justify-content: center; font-size: 16px; }
+        .sidebar.collapsed .new-chat-btn { padding: 8px; justify-content: center; }
+        .sidebar.collapsed .new-chat-btn .plus-icon { margin: 0; }
+        .sidebar.collapsed .new-chat-btn span:not(.plus-icon) { display: none; }
+        .sidebar.collapsed .chat-list { display: none; }
+        .sidebar.collapsed .sidebar-footer .user-name { display: none; }
+        .sidebar.collapsed .sidebar-footer .logout-btn { display: none; }
+        .sidebar.collapsed .sidebar-footer { justify-content: center; padding: 10px 0; }
+        .sidebar.collapsed .sidebar-footer .user-avatar { width: 28px; height: 28px; font-size: 11px; }
 
         .sidebar-header {
             padding: 12px;
             border-bottom: 1px solid var(--border-sidebar);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
         .new-chat-btn {
             width: 100%;
@@ -351,19 +366,20 @@
         .chat-header h1 { font-size: 16px; color: var(--text-primary); flex: 1; font-weight: 600; }
         .chat-header .header-actions { display: flex; align-items: center; gap: 8px; }
 
-        /* ===== Mode Switcher (Chat/Agent) ===== */
-        .mode-switcher {
+        /* ===== Mode Switcher Box (in sidebar, above 新建对话) ===== */
+        .mode-switcher-box {
             display: flex;
+            flex-direction: column;
             background: var(--bg-secondary);
-            border-radius: 8px;
-            padding: 3px;
-            gap: 2px;
-            flex-shrink: 0;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 6px;
+            gap: 4px;
         }
         .mode-btn {
-            padding: 5px 12px;
+            padding: 8px 12px;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
@@ -373,26 +389,21 @@
             white-space: nowrap;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
+            width: 100%;
         }
-        .mode-btn .mode-icon { font-size: 13px; }
-        .mode-btn .mode-label { font-size: 12px; }
-        .mode-btn:hover { color: var(--text-primary); }
+        .mode-btn .mode-icon { font-size: 14px; }
+        .mode-btn .mode-label { font-size: 13px; }
+        .mode-btn:hover { color: var(--text-primary); background: rgba(0,0,0,0.03); }
         .mode-btn.active {
             background: var(--bg-primary);
             color: var(--text-primary);
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
+        [data-theme="dark"] .mode-btn:hover { background: rgba(255,255,255,0.03); }
         [data-theme="dark"] .mode-btn.active {
             background: #3a3a3a;
             color: #e5e5e5;
-        }
-        /* Compact mode: only show icons (when sidebar collapsed) */
-        .mode-switcher.compact .mode-label {
-            display: none;
-        }
-        .mode-switcher.compact .mode-btn {
-            padding: 5px 8px;
         }
         .header-btn { padding: 6px 14px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); cursor: pointer; font-size: 13px; transition: all 0.15s; font-weight: 500; white-space: nowrap; }
         .header-btn:hover { border-color: #ccc; color: var(--text-primary); background: var(--bg-secondary); }
@@ -879,9 +890,9 @@
                 box-shadow: 4px 0 20px rgba(0,0,0,0.1) !important;
             }
             .sidebar.collapsed {
-                left: -280px !important;
-                width: var(--sidebar-width) !important;
-                min-width: var(--sidebar-width) !important;
+                left: 0 !important;
+                width: 56px !important;
+                min-width: 56px !important;
             }
             .chat-main {
                 width: 100% !important;
@@ -1096,6 +1107,16 @@
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
+            <div class="mode-switcher-box" id="modeSwitcherBox">
+                <button class="mode-btn" id="modeChat" onclick="switchMode('chat')">
+                    <span class="mode-icon">💬</span>
+                    <span class="mode-label">Chat</span>
+                </button>
+                <button class="mode-btn active" id="modeAgent" onclick="switchMode('agent')">
+                    <span class="mode-icon">🤖</span>
+                    <span class="mode-label">Agent</span>
+                </button>
+            </div>
             <button class="new-chat-btn" onclick="createNewChat()">
                 <span class="plus-icon">+</span>
                 <span>新建对话</span>
@@ -1114,16 +1135,6 @@
     <!-- Chat Main -->
     <div class="chat-main">
         <div class="chat-header">
-            <div class="mode-switcher" id="headerModeSwitcher">
-                <button class="mode-btn active" id="modeAgent" onclick="switchMode('agent')">
-                    <span class="mode-icon">🤖</span>
-                    <span class="mode-label">Agent</span>
-                </button>
-                <button class="mode-btn" id="modeChat" onclick="switchMode('chat')">
-                    <span class="mode-icon">💬</span>
-                    <span class="mode-label">Chat</span>
-                </button>
-            </div>
             <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="切换侧边栏">☰</button>
             <h1 id="chatTitle">DocAgent</h1>
             <div class="header-actions">
@@ -1277,8 +1288,8 @@ function switchMode(mode) {
     localStorage.setItem('chatMode', mode);
     
     // 更新按钮样式
-    document.getElementById('modeAgent').classList.toggle('active', mode === 'agent');
     document.getElementById('modeChat').classList.toggle('active', mode === 'chat');
+    document.getElementById('modeAgent').classList.toggle('active', mode === 'agent');
     
     // Chat模式：显示深度思考 + 联网搜索
     // Agent模式：显示联网搜索，隐藏深度思考
@@ -1287,7 +1298,7 @@ function switchMode(mode) {
     const attachBtn = document.querySelector('.toolbar-btn');
     
     if (mode === 'chat') {
-        webToggle.style.display = '';      // Chat模式也显示联网搜索
+        webToggle.style.display = '';
         thinkToggle.classList.add('visible');
         if (attachBtn) attachBtn.style.display = '';
     } else {
@@ -1320,12 +1331,6 @@ function switchMode(mode) {
     const saved = localStorage.getItem('chatMode');
     if (saved === 'chat') {
         switchMode('chat');
-    }
-    // 如果侧边栏默认收起，模式切换用紧凑模式
-    const sidebar = document.getElementById('sidebar');
-    const modeSwitcher = document.getElementById('headerModeSwitcher');
-    if (sidebar && modeSwitcher && sidebar.classList.contains('collapsed')) {
-        modeSwitcher.classList.add('compact');
     }
 })();
 
@@ -1705,18 +1710,11 @@ async function clearCurrentChat() {
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    const modeSwitcher = document.getElementById('headerModeSwitcher');
     if (window.innerWidth <= 768) {
         sidebar.classList.toggle('mobile-open');
         overlay.classList.toggle('active');
     } else {
         sidebar.classList.toggle('collapsed');
-        // 侧边栏收起时，模式切换只显示图标
-        if (sidebar.classList.contains('collapsed')) {
-            modeSwitcher.classList.add('compact');
-        } else {
-            modeSwitcher.classList.remove('compact');
-        }
     }
 }
 function closeSidebarMobile() {
