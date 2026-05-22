@@ -16,7 +16,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.config import settings, VISION_MODELS, DEFAULT_VISION_MODEL
 from app.agent.tools import ALL_TOOLS, get_tools
-from app.agent.prompts import SYSTEM_PROMPT, SYSTEM_PROMPT_WITH_WEB_SEARCH
+from app.agent.prompts import SYSTEM_PROMPT, SYSTEM_PROMPT_WITH_WEB_SEARCH, CHAT_SYSTEM_PROMPT
 from app.memory.manager import get_session_history
 
 # 最大历史消息数量（加速推理，避免上下文过长）
@@ -36,14 +36,27 @@ class AgentState(TypedDict):
 
 
 # ===== 2. 创建 LLM =====
-def create_llm():
-    """创建 LLM 实例（启用 streaming 支持）"""
+def create_llm(deep_think: bool = False):
+    """创建 LLM 实例（启用 streaming 支持）
+    
+    Args:
+        deep_think: 是否启用深度思考模式（使用更强的模型）
+    """
+    model = settings.LLM_MODEL
+    if deep_think:
+        # 深度思考模式：切换到更强的模型
+        deep_think_models = ["glm-5.1", "glm-5-turbo", "glm-5", "glm-4.7", "glm-4-plus"]
+        for m in deep_think_models:
+            if m != model:
+                model = m
+                break
+
     return ChatOpenAI(
         api_key=settings.LLM_API_KEY,
         base_url=settings.LLM_BASE_URL,
-        model=settings.LLM_MODEL,
-        temperature=0.1,
-        streaming=True,  # 启用流式输出
+        model=model,
+        temperature=0.1 if not deep_think else 0.3,
+        streaming=True,
     )
 
 
@@ -149,10 +162,22 @@ def reset_agent():
     _agent_graph = None
 
 
-def chat(user_input: str, session_id: str = "default", web_search: bool = False) -> str:
+def chat(user_input: str, session_id: str = "default", web_search: bool = False, mode: str = "agent", deep_think: bool = False) -> str:
     """
     非流式对话（保留兼容）
     """
+    if mode == "chat":
+        # Chat模式：直接LLM对话，不经过Agent
+        llm = create_llm(deep_think=deep_think)
+        history = get_session_history(session_id)
+        recent_messages = history.messages[-MAX_HISTORY_MESSAGES:]
+        all_messages = recent_messages + [HumanMessage(content=user_input)]
+        result = llm.invoke([SystemMessage(content=CHAT_SYSTEM_PROMPT)] + all_messages)
+        full_response = result.content
+        history.add_message(HumanMessage(content=user_input))
+        history.add_message(AIMessage(content=full_response))
+        return full_response
+
     agent = get_agent(web_search=web_search)
 
     # 获取该会话的历史消息
@@ -191,11 +216,18 @@ TOOL_DISPLAY_NAMES = {
 }
 
 
-async def chat_stream_generator(user_input: str, session_id: str = "default", web_search: bool = False) -> AsyncGenerator[dict, None]:
+async def chat_stream_generator(user_input: str, session_id: str = "default", web_search: bool = False, mode: str = "agent", deep_think: bool = False) -> AsyncGenerator[dict, None]:
     """
     流式对话：逐token输出，同时显示工具调用进度
     Yields: {"type": "token"|"tool"|"thinking"|"done"|"error", ...}
     """
+    # Chat模式：直接LLM对话
+    if mode == "chat":
+        async for chunk in _chat_mode_stream(user_input, session_id, deep_think=deep_think):
+            yield chunk
+        return
+
+    # Agent模式：走Agent工具调用
     agent = get_agent(web_search=web_search)
     history = get_session_history(session_id)
     recent_messages = history.messages[-MAX_HISTORY_MESSAGES:]
@@ -246,6 +278,42 @@ async def chat_stream_generator(user_input: str, session_id: str = "default", we
         except Exception as e2:
             yield {"type": "error", "content": f"处理失败: {str(e2)}"}
             return
+
+    # 保存到会话历史
+    if full_response:
+        try:
+            history.add_message(HumanMessage(content=user_input))
+            history.add_message(AIMessage(content=full_response))
+        except Exception:
+            pass
+
+    yield {"type": "done"}
+
+
+async def _chat_mode_stream(user_input: str, session_id: str = "default", deep_think: bool = False) -> AsyncGenerator[dict, None]:
+    """Chat模式：直接LLM流式对话，不经过Agent工具调用"""
+    llm = create_llm(deep_think=deep_think)
+    history = get_session_history(session_id)
+    recent_messages = history.messages[-MAX_HISTORY_MESSAGES:]
+    all_messages = recent_messages + [HumanMessage(content=user_input)]
+
+    full_response = ""
+
+    try:
+        if deep_think:
+            yield {"type": "thinking", "content": "深度思考中..."}
+        else:
+            yield {"type": "thinking", "content": "正在思考..."}
+
+        async for chunk in llm.astream([SystemMessage(content=CHAT_SYSTEM_PROMPT)] + all_messages):
+            content = getattr(chunk, 'content', '')
+            if content:
+                full_response += content
+                yield {"type": "token", "content": content}
+
+    except Exception as e:
+        yield {"type": "error", "content": f"处理失败: {str(e)}"}
+        return
 
     # 保存到会话历史
     if full_response:

@@ -350,6 +350,37 @@
         .toggle-sidebar-btn:hover { border-color: #ccc; color: var(--text-primary); background: var(--bg-secondary); }
         .chat-header h1 { font-size: 16px; color: var(--text-primary); flex: 1; font-weight: 600; }
         .chat-header .header-actions { display: flex; align-items: center; gap: 8px; }
+
+        /* ===== Mode Switcher (Chat/Agent) ===== */
+        .mode-switcher {
+            display: flex;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 2px;
+        }
+        .mode-btn {
+            padding: 5px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .mode-btn:hover { color: var(--text-primary); }
+        .mode-btn.active {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        [data-theme="dark"] .mode-btn.active {
+            background: #3a3a3a;
+            color: #e5e5e5;
+        }
         .header-btn { padding: 6px 14px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); cursor: pointer; font-size: 13px; transition: all 0.15s; font-weight: 500; white-space: nowrap; }
         .header-btn:hover { border-color: #ccc; color: var(--text-primary); background: var(--bg-secondary); }
         .header-btn.danger:hover { border-color: var(--error); color: var(--error); background: rgba(239,68,68,0.04); }
@@ -592,6 +623,30 @@
         }
         .web-search-toggle .toggle-icon { font-size: 13px; }
         .web-search-toggle .toggle-label { font-weight: 500; }
+
+        /* ===== Deep Think Toggle (pill style, same as web-search) ===== */
+        .deep-think-toggle {
+            display: none;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            user-select: none;
+        }
+        .deep-think-toggle:hover { border-color: #ccc; color: var(--text-primary); background: var(--bg-secondary); }
+        .deep-think-toggle.active { border-color: #7c3aed; color: #7c3aed; background: rgba(124,58,237,0.06); }
+        .deep-think-toggle.active:hover { background: rgba(124,58,237,0.1); }
+        [data-theme="dark"] .deep-think-toggle.active { border-color: #a78bfa; color: #a78bfa; background: rgba(167,139,250,0.08); }
+        .deep-think-toggle .toggle-icon { font-size: 13px; }
+        .deep-think-toggle .toggle-label { font-weight: 500; }
+        .deep-think-toggle.visible { display: flex; }
 
         /* ===== Toolbar Buttons (attach, etc.) ===== */
         .toolbar-btn {
@@ -1047,7 +1102,10 @@
     <div class="chat-main">
         <div class="chat-header">
             <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="切换侧边栏">☰</button>
-            <h1>DocAgent</h1>
+            <div class="mode-switcher">
+                <button class="mode-btn active" id="modeAgent" onclick="switchMode('agent')">Agent</button>
+                <button class="mode-btn" id="modeChat" onclick="switchMode('chat')">Chat</button>
+            </div>
             <div class="header-actions">
                 <button class="header-btn" onclick="toggleTheme()" title="切换暗色/亮色模式" id="themeBtn">🌙</button>
                 <select class="model-select" id="modelSelect" onchange="switchModel()" title="切换模型"></select>
@@ -1095,6 +1153,10 @@
                         <button class="web-search-toggle" id="webSearchToggle" onclick="toggleWebSearch()" title="开启/关闭联网搜索">
                             <span class="toggle-icon">🌐</span>
                             <span class="toggle-label">联网搜索</span>
+                        </button>
+                        <button class="deep-think-toggle" id="deepThinkToggle" onclick="toggleDeepThink()" title="开启/关闭深度思考">
+                            <span class="toggle-icon">🧠</span>
+                            <span class="toggle-label">深度思考</span>
                         </button>
                     </div>
                 </div>
@@ -1149,6 +1211,8 @@ let currentAbortController = null; // 用于停止生成
 let userScrolledUp = false; // 用于智能自动滚动
 let lastMessageText = ''; // 用于重新生成
 let webSearchEnabled = false; // 联网搜索开关
+let deepThinkEnabled = false; // 深度思考开关
+let currentMode = 'agent'; // 当前模式：agent / chat
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB 文件大小限制
 
 // ===== 暗色模式 =====
@@ -1184,6 +1248,72 @@ function toggleWebSearch() {
     if (saved === '1') {
         webSearchEnabled = true;
         document.getElementById('webSearchToggle').classList.add('active');
+    }
+})();
+
+// ===== 模式切换 (Chat/Agent) =====
+function switchMode(mode) {
+    currentMode = mode;
+    localStorage.setItem('chatMode', mode);
+    
+    // 更新按钮样式
+    document.getElementById('modeAgent').classList.toggle('active', mode === 'agent');
+    document.getElementById('modeChat').classList.toggle('active', mode === 'chat');
+    
+    // Chat模式：显示深度思考，隐藏联网搜索
+    // Agent模式：显示联网搜索，隐藏深度思考
+    const webToggle = document.getElementById('webSearchToggle');
+    const thinkToggle = document.getElementById('deepThinkToggle');
+    const attachBtn = document.querySelector('.toolbar-btn');
+    
+    if (mode === 'chat') {
+        webToggle.style.display = 'none';
+        thinkToggle.classList.add('visible');
+        if (attachBtn) attachBtn.style.display = ''; // Chat模式也保留上传
+    } else {
+        webToggle.style.display = '';
+        thinkToggle.classList.remove('visible');
+        thinkToggle.classList.remove('active');
+        deepThinkEnabled = false;
+    }
+    
+    // 更新欢迎词
+    const welcomeH2 = document.querySelector('.welcome-center h2');
+    const welcomeP = document.querySelector('.welcome-center p');
+    if (welcomeH2) {
+        welcomeH2.textContent = mode === 'agent' ? 'DocAgent' : 'Chat';
+    }
+    if (welcomeP) {
+        welcomeP.textContent = mode === 'agent'
+            ? '智能驱动，高效协同。随时为您解答疑问、处理事务，让工作更简单。'
+            : '通用对话模式，深度思考更精准。随时为您解答各类问题。';
+    }
+}
+// 初始化模式
+(function() {
+    const saved = localStorage.getItem('chatMode');
+    if (saved === 'chat') {
+        switchMode('chat');
+    }
+})();
+
+// ===== 深度思考开关 =====
+function toggleDeepThink() {
+    deepThinkEnabled = !deepThinkEnabled;
+    const btn = document.getElementById('deepThinkToggle');
+    if (deepThinkEnabled) {
+        btn.classList.add('active');
+    } else {
+        btn.classList.remove('active');
+    }
+    localStorage.setItem('deepThink', deepThinkEnabled ? '1' : '0');
+}
+// 初始化深度思考状态
+(function() {
+    const saved = localStorage.getItem('deepThink');
+    if (saved === '1' && currentMode === 'chat') {
+        deepThinkEnabled = true;
+        document.getElementById('deepThinkToggle').classList.add('active');
     }
 })();
 
@@ -1838,6 +1968,8 @@ async function sendMessage() {
         formData.append('message', message);
         formData.append('session_id', currentChatId);
         formData.append('web_search', webSearchEnabled);
+        formData.append('mode', currentMode);
+        formData.append('deep_think', deepThinkEnabled);
         await streamChat('/api/v1/chat-with-file/stream', { method: 'POST', body: formData }, bubble);
         removeFile();
         await loadChatList();
@@ -1862,7 +1994,7 @@ async function sendMessage() {
         await streamChat('/api/v1/chat/stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, session_id: currentChatId, web_search: webSearchEnabled })
+            body: JSON.stringify({ message, session_id: currentChatId, web_search: webSearchEnabled, mode: currentMode, deep_think: deepThinkEnabled })
         }, bubble);
         await loadChatList();
     }
