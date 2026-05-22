@@ -36,8 +36,8 @@ def web_search_tool(query: str) -> str:
         from urllib.parse import quote_plus
         import re
 
-        # 使用 Bing 搜索（国内可用：cn.bing.com）
-        search_url = f"https://cn.bing.com/search?q={quote_plus(query)}&count=8"
+        # 使用百度搜索（国内最稳定）
+        search_url = f"https://www.baidu.com/s?wd={quote_plus(query)}&rn=5"
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -49,26 +49,46 @@ def web_search_tool(query: str) -> str:
             resp = client.get(search_url)
             html = resp.text
 
-        # 解析 Bing 搜索结果
+        # 解析百度搜索结果
         results = []
-        # Bing 搜索结果在 <li class="b_algo"> 中
-        algo_pattern = re.compile(r'<li class="b_algo">(.*?)</li>', re.DOTALL)
-        for match in algo_pattern.finditer(html):
+
+        # 方法1：从 h3 标签提取标题和链接
+        h3_pattern = re.compile(r'<h3[^>]*class="[^"]*t[^"]*"[^>]*>(.*?)</h3>', re.DOTALL)
+        for match in h3_pattern.finditer(html):
             block = match.group(1)
-            # 提取标题
-            title_match = re.search(r'<a[^>]*>(.*?)</a>', block, re.DOTALL)
-            title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip() if title_match else "无标题"
-            # 提取链接
+            title = re.sub(r'<[^>]+>', '', block).strip()
             href_match = re.search(r'href="(https?://[^"]+)"', block)
             href = href_match.group(1) if href_match else ""
-            # 提取摘要
-            snippet_match = re.search(r'<p[^>]*>(.*?)</p>', block, re.DOTALL)
-            if not snippet_match:
-                snippet_match = re.search(r'<div class="b_caption"[^>]*>(.*?)</div>', block, re.DOTALL)
-            snippet = re.sub(r'<[^>]+>', '', snippet_match.group(1)).strip() if snippet_match else ""
-            # 过滤掉空结果
-            if title and title != "无标题":
-                results.append({"title": title, "href": href, "snippet": snippet})
+            if title:
+                results.append({"title": title, "href": href, "snippet": ""})
+
+        # 方法2：如果方法1没有结果，尝试更宽松的匹配
+        if not results:
+            h3_all = re.compile(r'<h3[^>]*>(.*?)</h3>', re.DOTALL)
+            for match in h3_all.finditer(html):
+                block = match.group(1)
+                title = re.sub(r'<[^>]+>', '', block).strip()
+                href_match = re.search(r'href="(https?://[^"]+)"', block)
+                href = href_match.group(1) if href_match else ""
+                if title and len(title) > 3:
+                    results.append({"title": title, "href": href, "snippet": ""})
+
+        # 提取摘要：从 c-abstract 或 content-right_ 标签
+        abstract_pattern = re.compile(r'class="c-abstract[^"]*"[^>]*>(.*?)</(?:span|div|p)>', re.DOTALL)
+        abstracts = [re.sub(r'<[^>]+>', '', m.group(1)).strip() for m in abstract_pattern.finditer(html)]
+
+        # 将摘要分配给对应的结果
+        for i, r in enumerate(results):
+            if i < len(abstracts) and abstracts[i]:
+                r["snippet"] = abstracts[i]
+
+        # 如果还是没有摘要，尝试从 c-span_last 中提取
+        if not any(r["snippet"] for r in results):
+            snippet_pattern = re.compile(r'<span class="content-right_[^"]*">(.*?)</span>', re.DOTALL)
+            snippets = [re.sub(r'<[^>]+>', '', m.group(1)).strip() for m in snippet_pattern.finditer(html)]
+            for i, r in enumerate(results):
+                if i < len(snippets) and snippets[i]:
+                    r["snippet"] = snippets[i]
 
         if not results:
             return "【联网搜索】未找到相关结果。建议：1）尝试换用不同关键词搜索；2）检查网络连接是否正常。"
@@ -77,7 +97,8 @@ def web_search_tool(query: str) -> str:
         for i, r in enumerate(results[:5], 1):
             output += f"<web_result index=\"{i}\">\n"
             output += f"  标题：{r['title']}\n"
-            output += f"  摘要：{r['snippet']}\n"
+            if r['snippet']:
+                output += f"  摘要：{r['snippet']}\n"
             if r['href']:
                 output += f"  链接：{r['href']}\n"
             output += f"</web_result>\n\n"
