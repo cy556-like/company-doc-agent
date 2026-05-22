@@ -19,6 +19,45 @@ from app.config import settings
 from app.rag.document import search_documents, index_document, list_indexed_documents, delete_document
 
 
+# ===== 联网搜索工具 =====
+@tool
+def web_search_tool(query: str) -> str:
+    """搜索互联网获取实时信息。当你需要最新资讯、实时数据、或知识库中没有的信息时使用此工具。
+
+    【用途】搜索互联网上的最新信息、新闻、实时数据等。
+    【典型问题】「最新新闻」「今天天气」「某产品最新价格」「最新技术动态」「实时汇率」
+    【不适用】查公司制度文档（用search_documents_tool）、查员工信息（用lookup_employee_tool）。
+
+    Args:
+        query: 搜索查询关键词。示例：「2024年最新AI技术动态」「北京今天天气」
+    """
+    try:
+        from duckduckgo_search import DDGS
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=5))
+
+        if not results:
+            return "【联网搜索】未找到相关结果。建议：1）尝试换用不同关键词搜索；2）检查网络连接是否正常。"
+
+        output = f"【联网搜索】共找到 {len(results)} 条相关结果：\n\n"
+        for i, r in enumerate(results, 1):
+            title = r.get('title', '无标题')
+            body = r.get('body', '无摘要')
+            href = r.get('href', '')
+            output += f"<web_result index=\"{i}\">\n"
+            output += f"  标题：{title}\n"
+            output += f"  摘要：{body}\n"
+            if href:
+                output += f"  链接：{href}\n"
+            output += f"</web_result>\n\n"
+
+        return output
+    except ImportError:
+        return "【联网搜索】搜索功能未安装，请运行 pip install duckduckgo-search 安装。"
+    except Exception as e:
+        return f"【联网搜索】搜索失败: {str(e)}\n建议：检查网络连接是否正常，或稍后重试。"
+
+
 def _load_employees():
     """加载员工数据"""
     employees_file = settings.EMPLOYEES_FILE
@@ -207,8 +246,10 @@ def delete_document_tool(filename: str) -> str:
         return f"【删除失败】{str(e)}"
 
 
-# ===== 导出所有工具列表 =====
-ALL_TOOLS = [
+# ===== 导出工具列表 =====
+
+# 基础工具（始终可用）
+BASE_TOOLS = [
     search_documents_tool,
     lookup_employee_tool,
     list_departments_tool,
@@ -216,3 +257,25 @@ ALL_TOOLS = [
     upload_document_tool,
     delete_document_tool,
 ]
+
+# 联网搜索工具（按需启用）
+WEB_SEARCH_TOOLS = [
+    web_search_tool,
+]
+
+# 全部工具
+ALL_TOOLS = BASE_TOOLS + WEB_SEARCH_TOOLS
+
+
+def get_tools(web_search: bool = False):
+    """根据参数获取工具列表
+
+    Args:
+        web_search: 是否启用联网搜索工具
+
+    Returns:
+        工具列表
+    """
+    if web_search:
+        return ALL_TOOLS
+    return BASE_TOOLS

@@ -37,6 +37,7 @@ class ChatRequest(BaseModel):
     """聊天请求"""
     message: str
     session_id: str = "default"
+    web_search: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -103,7 +104,7 @@ async def chat_api(req: ChatRequest):
     - 支持多轮对话
     """
     try:
-        response = chat(req.message, req.session_id)
+        response = chat(req.message, req.session_id, web_search=req.web_search)
         # 更新会话时间
         try:
             # 从 session_id 中提取 username
@@ -124,7 +125,7 @@ async def chat_stream_api(req: ChatRequest):
     返回 Server-Sent Events (SSE) 流
     """
     async def event_generator():
-        async for chunk in chat_stream_generator(req.message, req.session_id):
+        async for chunk in chat_stream_generator(req.message, req.session_id, web_search=req.web_search):
             yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
         # 更新会话时间
         try:
@@ -150,6 +151,7 @@ async def chat_with_file_stream(
     file: UploadFile = File(...),
     message: str = Form(""),
     session_id: str = Form("default"),
+    web_search: bool = Form(False),
 ):
     """
     带文件的流式对话：支持图片和文档

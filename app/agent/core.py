@@ -15,8 +15,8 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from app.config import settings, VISION_MODELS, DEFAULT_VISION_MODEL
-from app.agent.tools import ALL_TOOLS
-from app.agent.prompts import SYSTEM_PROMPT
+from app.agent.tools import ALL_TOOLS, get_tools
+from app.agent.prompts import SYSTEM_PROMPT, SYSTEM_PROMPT_WITH_WEB_SEARCH
 from app.memory.manager import get_session_history
 
 # 最大历史消息数量（加速推理，避免上下文过长）
@@ -48,9 +48,12 @@ def create_llm():
 
 
 # ===== 3. 构建 Agent 图 =====
-def create_agent_graph():
+def create_agent_graph(web_search: bool = False):
     """
     构建 LangGraph Agent 执行图
+
+    Args:
+        web_search: 是否启用联网搜索工具
 
     流程：用户输入 → LLM 思考 → 是否调用工具？
            ├─ 是 → 执行工具 → 回到 LLM 思考（循环，最多3轮）
@@ -58,20 +61,26 @@ def create_agent_graph():
     """
     llm = create_llm()
 
+    # 根据参数获取工具列表
+    tools = get_tools(web_search=web_search)
+
     # 将工具绑定到 LLM，让它知道有哪些工具可以用
-    llm_with_tools = llm.bind_tools(ALL_TOOLS)
+    llm_with_tools = llm.bind_tools(tools)
+
+    # 根据是否启用联网搜索选择系统提示词
+    system_prompt = SYSTEM_PROMPT_WITH_WEB_SEARCH if web_search else SYSTEM_PROMPT
 
     # 节点1: LLM 思考节点
     def think(state: AgentState):
         """LLM 思考：分析用户问题，决定是否调用工具"""
         messages = state["messages"]
         # 在开头插入系统提示词
-        system_msg = SystemMessage(content=SYSTEM_PROMPT)
+        system_msg = SystemMessage(content=system_prompt)
         response = llm_with_tools.invoke([system_msg] + messages)
         return {"messages": [response]}
 
     # 节点2: 工具执行节点（使用 LangGraph 内置的 ToolNode）
-    tool_node = ToolNode(ALL_TOOLS)
+    tool_node = ToolNode(tools)
 
     # 条件边：判断是否需要继续调用工具（限制最大轮数）
     def should_continue(state: AgentState):
@@ -119,15 +128,18 @@ def create_agent_graph():
     return graph.compile()
 
 
-# ===== 4. 全局 Agent 实例 =====
+# ===== 4. Agent 实例管理 =====
 _agent_graph = None
+_agent_web_search = False
 
 
-def get_agent():
-    """获取 Agent 单例（懒加载）"""
-    global _agent_graph
-    if _agent_graph is None:
-        _agent_graph = create_agent_graph()
+def get_agent(web_search: bool = False):
+    """获取 Agent 实例（懒加载，根据 web_search 参数决定是否包含联网搜索工具）"""
+    global _agent_graph, _agent_web_search
+    # 如果 web_search 参数变化或实例不存在，则重新创建
+    if _agent_graph is None or _agent_web_search != web_search:
+        _agent_graph = create_agent_graph(web_search=web_search)
+        _agent_web_search = web_search
     return _agent_graph
 
 
@@ -137,11 +149,11 @@ def reset_agent():
     _agent_graph = None
 
 
-def chat(user_input: str, session_id: str = "default") -> str:
+def chat(user_input: str, session_id: str = "default", web_search: bool = False) -> str:
     """
     非流式对话（保留兼容）
     """
-    agent = get_agent()
+    agent = get_agent(web_search=web_search)
 
     # 获取该会话的历史消息
     history = get_session_history(session_id)
@@ -175,15 +187,16 @@ TOOL_DISPLAY_NAMES = {
     "upload_document_tool": "上传文档",
     "modify_document_tool": "修改文档",
     "delete_document_tool": "删除文档",
+    "web_search_tool": "联网搜索",
 }
 
 
-async def chat_stream_generator(user_input: str, session_id: str = "default") -> AsyncGenerator[dict, None]:
+async def chat_stream_generator(user_input: str, session_id: str = "default", web_search: bool = False) -> AsyncGenerator[dict, None]:
     """
     流式对话：逐token输出，同时显示工具调用进度
     Yields: {"type": "token"|"tool"|"thinking"|"done"|"error", ...}
     """
-    agent = get_agent()
+    agent = get_agent(web_search=web_search)
     history = get_session_history(session_id)
     recent_messages = history.messages[-MAX_HISTORY_MESSAGES:]
     all_messages = recent_messages + [HumanMessage(content=user_input)]

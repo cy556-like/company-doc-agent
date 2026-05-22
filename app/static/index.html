@@ -551,6 +551,55 @@
         .icon-btn.stop { background: var(--text-primary); color: white; font-size: 14px; }
         .icon-btn.stop:hover { background: var(--accent-hover); }
 
+        /* ===== Web Search Toggle ===== */
+        .web-search-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            user-select: none;
+        }
+        .web-search-toggle:hover {
+            border-color: #ccc;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+        .web-search-toggle.active {
+            border-color: #2563eb;
+            color: #2563eb;
+            background: rgba(37, 99, 235, 0.06);
+        }
+        .web-search-toggle.active:hover {
+            background: rgba(37, 99, 235, 0.1);
+        }
+        [data-theme="dark"] .web-search-toggle.active {
+            border-color: #60a5fa;
+            color: #60a5fa;
+            background: rgba(96, 165, 250, 0.08);
+        }
+        [data-theme="dark"] .web-search-toggle.active:hover {
+            background: rgba(96, 165, 250, 0.12);
+        }
+        .web-search-toggle .toggle-icon {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        .web-search-toggle .toggle-label {
+            font-weight: 500;
+        }
+
         .download-link { display: inline-block; margin-top: 8px; padding: 6px 16px; background: var(--accent); color: white; border-radius: 6px; text-decoration: none; font-size: 13px; transition: background 0.2s; }
         .download-link:hover { background: var(--accent-hover); }
 
@@ -823,6 +872,13 @@
                 width: 44px !important;
                 height: 44px !important;
             }
+            .web-search-toggle {
+                padding: 6px 8px !important;
+                font-size: 12px !important;
+            }
+            .web-search-toggle .toggle-label {
+                display: none;
+            }
             .modal {
                 width: 94vw !important;
                 max-width: 520px !important;
@@ -1023,6 +1079,10 @@
                     </div>
                     <div class="input-row">
                         <button class="icon-btn attach" onclick="document.getElementById('fileInput').click()" title="上传文件或图片">📎</button>
+                        <button class="web-search-toggle" id="webSearchToggle" onclick="toggleWebSearch()" title="开启/关闭联网搜索">
+                            <span class="toggle-icon">🌐</span>
+                            <span class="toggle-label">联网</span>
+                        </button>
                         <textarea id="msgInput" rows="1" placeholder="输入问题，或粘贴/拖拽文件..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
                         <button class="icon-btn send" id="sendBtn" onclick="sendMessage()" title="发送">➤</button>
                         <button class="icon-btn stop" id="stopBtn" onclick="stopGeneration()" title="停止生成" style="display:none;">■</button>
@@ -1078,6 +1138,7 @@ let renamingChatId = null;
 let currentAbortController = null; // 用于停止生成
 let userScrolledUp = false; // 用于智能自动滚动
 let lastMessageText = ''; // 用于重新生成
+let webSearchEnabled = false; // 联网搜索开关
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB 文件大小限制
 
 // ===== 暗色模式 =====
@@ -1093,6 +1154,26 @@ function toggleTheme() {
     const saved = localStorage.getItem('theme');
     if (saved === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
+    }
+})();
+
+// ===== 联网搜索开关 =====
+function toggleWebSearch() {
+    webSearchEnabled = !webSearchEnabled;
+    const btn = document.getElementById('webSearchToggle');
+    if (webSearchEnabled) {
+        btn.classList.add('active');
+    } else {
+        btn.classList.remove('active');
+    }
+    localStorage.setItem('webSearch', webSearchEnabled ? '1' : '0');
+}
+// 初始化联网搜索状态
+(function() {
+    const saved = localStorage.getItem('webSearch');
+    if (saved === '1') {
+        webSearchEnabled = true;
+        document.getElementById('webSearchToggle').classList.add('active');
     }
 })();
 
@@ -1746,6 +1827,7 @@ async function sendMessage() {
         formData.append('file', selectedFile);
         formData.append('message', message);
         formData.append('session_id', currentChatId);
+        formData.append('web_search', webSearchEnabled);
         await streamChat('/api/v1/chat-with-file/stream', { method: 'POST', body: formData }, bubble);
         removeFile();
         await loadChatList();
@@ -1770,7 +1852,7 @@ async function sendMessage() {
         await streamChat('/api/v1/chat/stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, session_id: currentChatId })
+            body: JSON.stringify({ message, session_id: currentChatId, web_search: webSearchEnabled })
         }, bubble);
         await loadChatList();
     }
