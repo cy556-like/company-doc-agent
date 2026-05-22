@@ -249,7 +249,16 @@ async def chat_stream_generator(user_input: str, session_id: str = "default", we
             if kind == "on_chat_model_stream":
                 chunk = event["data"]["chunk"]
                 content = getattr(chunk, 'content', '')
-                if content:
+                # 处理content为列表的情况（某些LLM返回结构化内容）
+                if isinstance(content, list):
+                    text_parts = []
+                    for item in content:
+                        if isinstance(item, dict) and item.get('type') == 'text':
+                            text_parts.append(item.get('text', ''))
+                        elif isinstance(item, str):
+                            text_parts.append(item)
+                    content = ''.join(text_parts)
+                if content and isinstance(content, str):
                     full_response += content
                     yield {"type": "token", "content": content}
 
@@ -270,14 +279,30 @@ async def chat_stream_generator(user_input: str, session_id: str = "default", we
         try:
             result = agent.invoke({"messages": all_messages})
             ai_message = result["messages"][-1]
-            full_response = ai_message.content
-            # 模拟打字效果
-            for i in range(0, len(full_response), 3):
-                yield {"type": "token", "content": full_response[i:i+3]}
-                await asyncio.sleep(0.02)
+            full_response = ai_message.content or ""
+            if full_response:
+                # 模拟打字效果
+                for i in range(0, len(full_response), 3):
+                    yield {"type": "token", "content": full_response[i:i+3]}
+                    await asyncio.sleep(0.02)
         except Exception as e2:
             yield {"type": "error", "content": f"处理失败: {str(e2)}"}
             return
+
+    # 如果流式输出为空但Agent可能有回复（工具调用后token丢失），尝试非流式回退
+    if not full_response:
+        try:
+            result = agent.invoke({"messages": all_messages})
+            ai_message = result["messages"][-1]
+            full_response = ai_message.content or ""
+            if full_response:
+                for i in range(0, len(full_response), 3):
+                    yield {"type": "token", "content": full_response[i:i+3]}
+                    await asyncio.sleep(0.02)
+            else:
+                yield {"type": "error", "content": "未能获取到回复，请重试"}
+        except Exception as e3:
+            yield {"type": "error", "content": f"处理失败: {str(e3)}"}
 
     # 保存到会话历史
     if full_response:
@@ -307,7 +332,16 @@ async def _chat_mode_stream(user_input: str, session_id: str = "default", deep_t
 
         async for chunk in llm.astream([SystemMessage(content=CHAT_SYSTEM_PROMPT)] + all_messages):
             content = getattr(chunk, 'content', '')
-            if content:
+            # 处理content为列表的情况
+            if isinstance(content, list):
+                text_parts = []
+                for item in content:
+                    if isinstance(item, dict) and item.get('type') == 'text':
+                        text_parts.append(item.get('text', ''))
+                    elif isinstance(item, str):
+                        text_parts.append(item)
+                content = ''.join(text_parts)
+            if content and isinstance(content, str):
                 full_response += content
                 yield {"type": "token", "content": content}
 
@@ -360,7 +394,16 @@ async def chat_stream_generator_multimodal(multimodal_content: list, session_id:
 
         async for chunk in llm.astream([SystemMessage(content=SYSTEM_PROMPT)] + all_messages):
             content = getattr(chunk, 'content', '')
-            if content:
+            # 处理content为列表的情况
+            if isinstance(content, list):
+                text_parts = []
+                for item in content:
+                    if isinstance(item, dict) and item.get('type') == 'text':
+                        text_parts.append(item.get('text', ''))
+                    elif isinstance(item, str):
+                        text_parts.append(item)
+                content = ''.join(text_parts)
+            if content and isinstance(content, str):
                 full_response += content
                 yield {"type": "token", "content": content}
 
