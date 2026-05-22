@@ -239,7 +239,7 @@ async def chat_with_file_stream(
 
     # 流式回答
     async def event_generator():
-        async for chunk in chat_stream_generator(full_message, session_id):
+        async for chunk in chat_stream_generator(full_message, session_id, web_search=web_search, mode=mode, deep_think=deep_think):
             yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
         try:
             parts = session_id.split("_", 1)
