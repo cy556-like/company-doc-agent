@@ -159,6 +159,16 @@
         .sidebar-header {
             padding: 12px;
             border-bottom: 1px solid var(--border-sidebar);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .sidebar-header .mode-switcher {
+            width: 100%;
+        }
+        .sidebar-header .mode-btn {
+            flex: 1;
+            text-align: center;
         }
         .new-chat-btn {
             width: 100%;
@@ -1083,6 +1093,10 @@
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
+            <div class="mode-switcher">
+                <button class="mode-btn active" id="modeAgent" onclick="switchMode('agent')">Agent</button>
+                <button class="mode-btn" id="modeChat" onclick="switchMode('chat')">Chat</button>
+            </div>
             <button class="new-chat-btn" onclick="createNewChat()">
                 <span class="plus-icon">+</span>
                 <span>新建对话</span>
@@ -1102,10 +1116,7 @@
     <div class="chat-main">
         <div class="chat-header">
             <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="切换侧边栏">☰</button>
-            <div class="mode-switcher">
-                <button class="mode-btn active" id="modeAgent" onclick="switchMode('agent')">Agent</button>
-                <button class="mode-btn" id="modeChat" onclick="switchMode('chat')">Chat</button>
-            </div>
+            <h1 id="chatTitle">DocAgent</h1>
             <div class="header-actions">
                 <button class="header-btn" onclick="toggleTheme()" title="切换暗色/亮色模式" id="themeBtn">🌙</button>
                 <select class="model-select" id="modelSelect" onchange="switchModel()" title="切换模型"></select>
@@ -1898,8 +1909,11 @@ async function streamChat(url, options, bubble) {
         finalize();
         removeThinking();
 
-        if (!fullText && bubble.textContent.trim() === '') {
-            bubble.innerHTML = '（未获取到回复）';
+        if (!fullText) {
+            if (bubble.textContent.trim() === '') {
+                bubble.innerHTML = '（未获取到回复）';
+            }
+            // fullText为空但bubble有工具标签内容时，保留工具标签，不覆盖
         } else {
             // 流式完成后，对完整内容进行Markdown渲染
             renderBubbleMarkdown(bubble, fullText);
