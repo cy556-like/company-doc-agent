@@ -8,6 +8,7 @@ import asyncio
 import shutil
 import json
 import base64
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
@@ -22,6 +23,11 @@ from app.memory.manager import (
     create_chat, list_chats, delete_chat, rename_chat, update_chat_time,
 )
 from app.config import settings, AVAILABLE_MODELS, get_current_model, set_current_model
+
+logger = logging.getLogger(__name__)
+
+# 文件大小限制：50MB
+MAX_FILE_SIZE = 50 * 1024 * 1024
 
 router = APIRouter()
 
@@ -157,6 +163,15 @@ async def chat_with_file_stream(
     doc_exts = {".pdf", ".txt", ".docx"}
     code_exts = {".py", ".js", ".html", ".css", ".json", ".md", ".csv", ".xlsx", ".xls", ".doc", ".ppt", ".pptx"}
 
+    # 文件大小检查
+    file_content_raw = await file.read()
+    if len(file_content_raw) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail=f"文件大小超过限制（最大 50MB），当前文件: {len(file_content_raw) // 1024 // 1024}MB")
+    # 重置文件指针
+    await file.seek(0)
+
+    logger.info(f"收到文件上传: {file.filename}, 大小: {len(file_content_raw)} bytes")
+
     if ext in image_exts:
         # 图片文件：用多模态消息格式传给LLM做视觉分析
         file_content = await file.read()
@@ -254,6 +269,14 @@ async def upload_document(file: UploadFile = File(...)):
             status_code=400,
             detail=f"不支持的文件格式: {ext}，仅支持 {allowed_ext}",
         )
+
+    # 文件大小检查
+    file_content_raw = await file.read()
+    if len(file_content_raw) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail=f"文件大小超过限制（最大 50MB）")
+    await file.seek(0)
+
+    logger.info(f"知识库上传文档: {file.filename}, 大小: {len(file_content_raw)} bytes")
 
     # 保存文件
     file_path = os.path.join(settings.DOCUMENTS_DIR, file.filename)
