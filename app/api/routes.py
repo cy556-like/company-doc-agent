@@ -14,7 +14,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.agent.core import chat, chat_stream_generator, reset_agent
+from app.agent.core import chat, chat_stream_generator, chat_stream_generator_multimodal, reset_agent
 from app.rag.document import index_document, search_documents, list_indexed_documents, delete_document
 from app.auth.user_manager import login_user, register_user
 from app.memory.manager import (
@@ -158,7 +158,7 @@ async def chat_with_file_stream(
     code_exts = {".py", ".js", ".html", ".css", ".json", ".md", ".csv", ".xlsx", ".xls", ".doc", ".ppt", ".pptx"}
 
     if ext in image_exts:
-        # 图片文件：base64编码，传给LLM做视觉分析
+        # 图片文件：用多模态消息格式传给LLM做视觉分析
         file_content = await file.read()
         b64 = base64.b64encode(file_content).decode("utf-8")
         mime_map = {
@@ -166,7 +166,32 @@ async def chat_with_file_stream(
             ".gif": "image/gif", ".bmp": "image/bmp", ".webp": "image/webp",
         }
         mime_type = mime_map.get(ext, "image/png")
-        full_message = f"[用户上传了图片: {file.filename}]\n\n{message}\n\n[图片数据: data:{mime_type};base64,{b64}]"
+        # 构建多模态消息内容（不使用纯文本，而是结构化列表）
+        image_url = f"data:{mime_type};base64,{b64}"
+        multimodal_content = [
+            {"type": "text", "text": f"[用户上传了图片: {file.filename}]\n\n{message or '请描述这张图片'}"},
+            {"type": "image_url", "image_url": {"url": image_url}},
+        ]
+        # 直接调用多模态流式生成
+        async def event_generator():
+            async for chunk in chat_stream_generator_multimodal(multimodal_content, session_id):
+                yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            try:
+                parts = session_id.split("_", 1)
+                if len(parts) == 2:
+                    update_chat_time(parts[0], session_id)
+            except Exception:
+                pass
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     elif ext in doc_exts:
         # 文档文件：索引到知识库后回答

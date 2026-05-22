@@ -14,7 +14,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from app.config import settings
+from app.config import settings, VISION_MODELS, DEFAULT_VISION_MODEL
 from app.agent.tools import ALL_TOOLS
 from app.agent.prompts import SYSTEM_PROMPT
 from app.memory.manager import get_session_history
@@ -238,6 +238,69 @@ async def chat_stream_generator(user_input: str, session_id: str = "default") ->
     if full_response:
         try:
             history.add_message(HumanMessage(content=user_input))
+            history.add_message(AIMessage(content=full_response))
+        except Exception:
+            pass
+
+    yield {"type": "done"}
+
+
+async def chat_stream_generator_multimodal(multimodal_content: list, session_id: str = "default") -> AsyncGenerator[dict, None]:
+    """
+    多模态流式对话：支持图片+文本的混合消息
+    multimodal_content: [{"type":"text","text":"..."}, {"type":"image_url","image_url":{"url":"data:image/png;base64,..."}}]
+    注意：图片消息不走 Agent 工具调用（多模态模型不支持 function calling + 图片混用）
+    """
+    # 自动切换到视觉模型（当前模型不支持图片时）
+    current_model = settings.LLM_MODEL
+    use_model = current_model
+    if current_model not in VISION_MODELS:
+        use_model = DEFAULT_VISION_MODEL
+
+    llm = ChatOpenAI(
+        api_key=settings.LLM_API_KEY,
+        base_url=settings.LLM_BASE_URL,
+        model=use_model,
+        temperature=0.1,
+        streaming=True,
+    )
+
+    history = get_session_history(session_id)
+    recent_messages = history.messages[-MAX_HISTORY_MESSAGES:]
+
+    # 构建多模态 HumanMessage
+    human_msg = HumanMessage(content=multimodal_content)
+    all_messages = recent_messages + [human_msg]
+
+    full_response = ""
+
+    try:
+        yield {"type": "thinking", "content": f"正在分析图片（使用{use_model}）..."}
+
+        async for chunk in llm.astream([SystemMessage(content=SYSTEM_PROMPT)] + all_messages):
+            content = getattr(chunk, 'content', '')
+            if content:
+                full_response += content
+                yield {"type": "token", "content": content}
+
+    except Exception as e:
+        # 多模态失败，尝试降级为纯文本描述
+        try:
+            # 提取文本部分
+            text_parts = [p["text"] for p in multimodal_content if p["type"] == "text"]
+            fallback_text = "\n".join(text_parts) + "\n\n[注意：图片分析失败，请用文字描述你的问题]"
+            async for event in chat_stream_generator(fallback_text, session_id):
+                yield event
+            return
+        except Exception as e2:
+            yield {"type": "error", "content": f"图片分析失败: {str(e2)}"}
+            return
+
+    # 保存到会话历史（用文本描述保存，避免base64占空间）
+    if full_response:
+        try:
+            text_summary = " ".join([p["text"] for p in multimodal_content if p["type"] == "text"])
+            history.add_message(HumanMessage(content=text_summary))
             history.add_message(AIMessage(content=full_response))
         except Exception:
             pass

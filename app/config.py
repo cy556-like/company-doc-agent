@@ -16,6 +16,9 @@ AVAILABLE_MODELS = [
     # GLM-4.7 系列
     {"id": "glm-4.7", "name": "GLM-4.7", "desc": "高性能，综合能力提升"},
     {"id": "glm-4.7-flash", "name": "GLM-4.7-Flash", "desc": "快速版，性价比高"},
+    # GLM-4V 视觉系列（支持图片分析）
+    {"id": "glm-4v-plus", "name": "GLM-4V-Plus", "desc": "视觉旗舰，图片分析首选"},
+    {"id": "glm-4v", "name": "GLM-4V", "desc": "视觉模型，支持图片理解"},
     # GLM-4 系列（经典）
     {"id": "glm-4-plus", "name": "GLM-4-Plus", "desc": "高性能，复杂任务首选"},
     {"id": "glm-4-long", "name": "GLM-4-Long", "desc": "超长上下文，支持128K"},
@@ -24,6 +27,11 @@ AVAILABLE_MODELS = [
     {"id": "glm-4-air-0111", "name": "GLM-4-Air-0111", "desc": "Air升级版，效果更好"},
     {"id": "glm-4", "name": "GLM-4", "desc": "经典旗舰模型"},
 ]
+
+# 支持图片分析的视觉模型列表
+VISION_MODELS = {"glm-4v-plus", "glm-4v", "glm-4v-flash"}
+# 默认视觉模型（当用户上传图片时自动切换）
+DEFAULT_VISION_MODEL = "glm-4v-plus"
 
 
 class Settings:
