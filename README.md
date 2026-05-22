@@ -1,5 +1,9 @@
 # 企业文档智能助手 Agent
 
+<p align="center">
+  <img src="assets/demo.png" alt="Demo" width="800">
+</p>
+
 基于 **LangChain + LangGraph + FastAPI + ChromaDB** 的企业文档智能助手，采用 ReAct Agent 模式，支持 RAG 文档问答、员工查询、文档修改、流式输出等功能。
 支持多模型调用。
 ## 项目架构
