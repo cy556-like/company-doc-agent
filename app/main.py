@@ -13,9 +13,32 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, FileResponse
+import logging
 
 from app.config import settings
 from app.api.routes import router
+
+# ===== 配置日志系统 =====
+def setup_logging():
+    """配置全局日志"""
+    log_dir = os.path.join(settings.DATA_DIR, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+            logging.StreamHandler(),  # 控制台输出
+            logging.FileHandler(
+                os.path.join(log_dir, 'app.log'),
+                encoding='utf-8'
+            ),  # 文件输出
+        ]
+    )
+    logger = logging.getLogger('app')
+    logger.info("日志系统已初始化")
+    return logger
 
 
 def create_app() -> FastAPI:
@@ -94,11 +117,15 @@ if __name__ == "__main__":
     # 确保临时文件目录存在
     os.makedirs(os.path.join(settings.DATA_DIR, "temp"), exist_ok=True)
 
+    # 初始化日志
+    logger = setup_logging()
+
     print("=" * 50)
     print("企业文档智能助手 Agent 启动中...")
     print(f"  前端界面: http://localhost:{settings.APP_PORT}")
     print(f"  API 地址: http://localhost:{settings.APP_PORT}/api/v1")
     print(f"  API 文档: http://localhost:{settings.APP_PORT}/docs")
+    print(f"  日志文件: {os.path.join(settings.DATA_DIR, 'logs', 'app.log')}")
     print("=" * 50)
 
     uvicorn.run(
