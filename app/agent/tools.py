@@ -32,28 +32,57 @@ def web_search_tool(query: str) -> str:
         query: 搜索查询关键词。示例：「2024年最新AI技术动态」「北京今天天气」
     """
     try:
-        from duckduckgo_search import DDGS
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=5))
+        import httpx
+        from urllib.parse import quote_plus
+        import re
+
+        # 使用 Bing 搜索（国内可用：cn.bing.com）
+        search_url = f"https://cn.bing.com/search?q={quote_plus(query)}&count=8"
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        }
+
+        with httpx.Client(headers=headers, follow_redirects=True, timeout=15) as client:
+            resp = client.get(search_url)
+            html = resp.text
+
+        # 解析 Bing 搜索结果
+        results = []
+        # Bing 搜索结果在 <li class="b_algo"> 中
+        algo_pattern = re.compile(r'<li class="b_algo">(.*?)</li>', re.DOTALL)
+        for match in algo_pattern.finditer(html):
+            block = match.group(1)
+            # 提取标题
+            title_match = re.search(r'<a[^>]*>(.*?)</a>', block, re.DOTALL)
+            title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip() if title_match else "无标题"
+            # 提取链接
+            href_match = re.search(r'href="(https?://[^"]+)"', block)
+            href = href_match.group(1) if href_match else ""
+            # 提取摘要
+            snippet_match = re.search(r'<p[^>]*>(.*?)</p>', block, re.DOTALL)
+            if not snippet_match:
+                snippet_match = re.search(r'<div class="b_caption"[^>]*>(.*?)</div>', block, re.DOTALL)
+            snippet = re.sub(r'<[^>]+>', '', snippet_match.group(1)).strip() if snippet_match else ""
+            # 过滤掉空结果
+            if title and title != "无标题":
+                results.append({"title": title, "href": href, "snippet": snippet})
 
         if not results:
             return "【联网搜索】未找到相关结果。建议：1）尝试换用不同关键词搜索；2）检查网络连接是否正常。"
 
         output = f"【联网搜索】共找到 {len(results)} 条相关结果：\n\n"
-        for i, r in enumerate(results, 1):
-            title = r.get('title', '无标题')
-            body = r.get('body', '无摘要')
-            href = r.get('href', '')
+        for i, r in enumerate(results[:5], 1):
             output += f"<web_result index=\"{i}\">\n"
-            output += f"  标题：{title}\n"
-            output += f"  摘要：{body}\n"
-            if href:
-                output += f"  链接：{href}\n"
+            output += f"  标题：{r['title']}\n"
+            output += f"  摘要：{r['snippet']}\n"
+            if r['href']:
+                output += f"  链接：{r['href']}\n"
             output += f"</web_result>\n\n"
 
         return output
-    except ImportError:
-        return "【联网搜索】搜索功能未安装，请运行 pip install duckduckgo-search 安装。"
     except Exception as e:
         return f"【联网搜索】搜索失败: {str(e)}\n建议：检查网络连接是否正常，或稍后重试。"
 
