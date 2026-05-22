@@ -4,6 +4,7 @@
 """
 import os
 import json
+import logging
 from typing import Optional
 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
@@ -13,29 +14,49 @@ from langchain_community.vectorstores import Chroma
 
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 # Embedding API 单次最大批量数（智谱限制 64 条）
 EMBEDDING_BATCH_SIZE = 50
 
+# ===== 单例模式：复用 Embedding 和 ChromaDB 连接 =====
+_embeddings_instance = None
+_vector_store_instance = None
+
 
 def get_embeddings():
-    """获取 Embedding 模型（使用 OpenAI 兼容接口）"""
-    # 智谱 GLM 用 embedding-3，OpenAI 用 text-embedding-v3，DeepSeek 用 text-embedding-v3
-    # 通过 .env 中的 EMBEDDING_MODEL 配置
-    embedding_model = getattr(settings, 'EMBEDDING_MODEL', 'embedding-3')
-    return OpenAIEmbeddings(
-        api_key=settings.LLM_API_KEY,
-        base_url=settings.LLM_BASE_URL,
-        model=embedding_model,
-    )
+    """获取 Embedding 模型（单例复用，避免重复初始化）"""
+    global _embeddings_instance
+    if _embeddings_instance is None:
+        embedding_model = getattr(settings, 'EMBEDDING_MODEL', 'embedding-3')
+        _embeddings_instance = OpenAIEmbeddings(
+            api_key=settings.LLM_API_KEY,
+            base_url=settings.LLM_BASE_URL,
+            model=embedding_model,
+        )
+        logger.info(f"Embedding 模型已初始化: {embedding_model}")
+    return _embeddings_instance
 
 
 def get_vector_store():
-    """获取 ChromaDB 向量数据库实例"""
-    embeddings = get_embeddings()
-    return Chroma(
-        persist_directory=settings.CHROMA_DIR,
-        embedding_function=embeddings,
-    )
+    """获取 ChromaDB 向量数据库实例（单例复用）"""
+    global _vector_store_instance
+    if _vector_store_instance is None:
+        embeddings = get_embeddings()
+        _vector_store_instance = Chroma(
+            persist_directory=settings.CHROMA_DIR,
+            embedding_function=embeddings,
+        )
+        logger.info(f"ChromaDB 已连接: {settings.CHROMA_DIR}")
+    return _vector_store_instance
+
+
+def reset_vector_store():
+    """重置向量数据库单例（配置变更时调用）"""
+    global _vector_store_instance, _embeddings_instance
+    _vector_store_instance = None
+    _embeddings_instance = None
+    logger.info("向量数据库单例已重置")
 
 
 def load_document(file_path: str) -> list:
@@ -82,6 +103,8 @@ def index_document(file_path: str, filename: str = None) -> dict:
     if filename is None:
         filename = os.path.basename(file_path)
 
+    logger.info(f"开始索引文档: {filename}")
+
     # 1. 加载文档
     docs = load_document(file_path)
 
@@ -126,6 +149,7 @@ def index_document(file_path: str, filename: str = None) -> dict:
                 pass
             raise RuntimeError(f"第 {i+1}/{batch_count} 批向量化失败（分块 {start+1}-{end}）: {str(e)}")
 
+    logger.info(f"文档索引完成: {filename}, 共 {total_chunks} 个分块")    
     return {
         "filename": filename,
         "chunks": total_chunks,
