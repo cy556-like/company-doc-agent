@@ -7,6 +7,7 @@ import os
 import asyncio
 import shutil
 import json
+import base64
 from typing import Optional
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
@@ -145,30 +146,52 @@ async def chat_with_file_stream(
     session_id: str = Form("default"),
 ):
     """
-    带文件的流式对话：先上传文件，再基于文件内容回答问题
+    带文件的流式对话：支持图片和文档
+    - 图片（png/jpg/jpeg/gif/bmp/webp）：转为base64传给LLM分析
+    - 文档（pdf/txt/docx）：索引后基于内容回答
+    - 其他文件：读取文本内容（如有）传给LLM
     返回 Server-Sent Events (SSE) 流
     """
-    # 1. 上传文件
-    allowed_ext = {".pdf", ".txt", ".docx"}
     ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in allowed_ext:
+    image_exts = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
+    doc_exts = {".pdf", ".txt", ".docx"}
+    code_exts = {".py", ".js", ".html", ".css", ".json", ".md", ".csv", ".xlsx", ".xls", ".doc", ".ppt", ".pptx"}
+
+    if ext in image_exts:
+        # 图片文件：base64编码，传给LLM做视觉分析
+        file_content = await file.read()
+        b64 = base64.b64encode(file_content).decode("utf-8")
+        mime_map = {
+            ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+            ".gif": "image/gif", ".bmp": "image/bmp", ".webp": "image/webp",
+        }
+        mime_type = mime_map.get(ext, "image/png")
+        full_message = f"[用户上传了图片: {file.filename}]\n\n{message}\n\n[图片数据: data:{mime_type};base64,{b64}]"
+
+    elif ext in doc_exts:
+        # 文档文件：索引到知识库后回答
+        file_path = os.path.join(settings.DOCUMENTS_DIR, file.filename)
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        try:
+            index_result = index_document(file_path, file.filename)
+        except Exception as e:
+            os.remove(file_path)
+            raise HTTPException(status_code=500, detail=f"文档索引失败: {str(e)}")
+        full_message = f"[用户上传了文档: {file.filename}]\n\n{message}"
+
+    elif ext in code_exts:
+        # 代码/其他文本文件：读取内容传给LLM
+        try:
+            file_content = await file.read()
+            text = file_content.decode("utf-8", errors="replace")
+            full_message = f"[用户上传了文件: {file.filename}]\n\n文件内容：\n```\n{text[:8000]}\n```\n\n{message}"
+        except Exception:
+            full_message = f"[用户上传了文件: {file.filename}，但无法读取内容]\n\n{message}"
+    else:
         raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}")
 
-    file_path = os.path.join(settings.DOCUMENTS_DIR, file.filename)
-    with open(file_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-
-    # 2. 索引文件
-    try:
-        index_result = index_document(file_path, file.filename)
-    except Exception as e:
-        os.remove(file_path)
-        raise HTTPException(status_code=500, detail=f"文档索引失败: {str(e)}")
-
-    # 3. 构建带文件上下文的提示
-    full_message = f"[用户上传了文档: {file.filename}]\n\n{message}"
-
-    # 4. 流式回答
+    # 流式回答
     async def event_generator():
         async for chunk in chat_stream_generator(full_message, session_id):
             yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
