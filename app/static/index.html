@@ -159,16 +159,6 @@
         .sidebar-header {
             padding: 12px;
             border-bottom: 1px solid var(--border-sidebar);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .sidebar-header .mode-switcher {
-            width: 100%;
-        }
-        .sidebar-header .mode-btn {
-            flex: 1;
-            text-align: center;
         }
         .new-chat-btn {
             width: 100%;
@@ -368,9 +358,10 @@
             border-radius: 8px;
             padding: 3px;
             gap: 2px;
+            flex-shrink: 0;
         }
         .mode-btn {
-            padding: 5px 14px;
+            padding: 5px 12px;
             border: none;
             border-radius: 6px;
             font-size: 13px;
@@ -380,7 +371,12 @@
             background: transparent;
             color: var(--text-secondary);
             white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
+        .mode-btn .mode-icon { font-size: 13px; }
+        .mode-btn .mode-label { font-size: 12px; }
         .mode-btn:hover { color: var(--text-primary); }
         .mode-btn.active {
             background: var(--bg-primary);
@@ -390,6 +386,13 @@
         [data-theme="dark"] .mode-btn.active {
             background: #3a3a3a;
             color: #e5e5e5;
+        }
+        /* Compact mode: only show icons (when sidebar collapsed) */
+        .mode-switcher.compact .mode-label {
+            display: none;
+        }
+        .mode-switcher.compact .mode-btn {
+            padding: 5px 8px;
         }
         .header-btn { padding: 6px 14px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); cursor: pointer; font-size: 13px; transition: all 0.15s; font-weight: 500; white-space: nowrap; }
         .header-btn:hover { border-color: #ccc; color: var(--text-primary); background: var(--bg-secondary); }
@@ -1093,10 +1096,6 @@
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="mode-switcher">
-                <button class="mode-btn active" id="modeAgent" onclick="switchMode('agent')">Agent</button>
-                <button class="mode-btn" id="modeChat" onclick="switchMode('chat')">Chat</button>
-            </div>
             <button class="new-chat-btn" onclick="createNewChat()">
                 <span class="plus-icon">+</span>
                 <span>新建对话</span>
@@ -1115,6 +1114,16 @@
     <!-- Chat Main -->
     <div class="chat-main">
         <div class="chat-header">
+            <div class="mode-switcher" id="headerModeSwitcher">
+                <button class="mode-btn active" id="modeAgent" onclick="switchMode('agent')">
+                    <span class="mode-icon">🤖</span>
+                    <span class="mode-label">Agent</span>
+                </button>
+                <button class="mode-btn" id="modeChat" onclick="switchMode('chat')">
+                    <span class="mode-icon">💬</span>
+                    <span class="mode-label">Chat</span>
+                </button>
+            </div>
             <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="切换侧边栏">☰</button>
             <h1 id="chatTitle">DocAgent</h1>
             <div class="header-actions">
@@ -1271,21 +1280,27 @@ function switchMode(mode) {
     document.getElementById('modeAgent').classList.toggle('active', mode === 'agent');
     document.getElementById('modeChat').classList.toggle('active', mode === 'chat');
     
-    // Chat模式：显示深度思考，隐藏联网搜索
+    // Chat模式：显示深度思考 + 联网搜索
     // Agent模式：显示联网搜索，隐藏深度思考
     const webToggle = document.getElementById('webSearchToggle');
     const thinkToggle = document.getElementById('deepThinkToggle');
     const attachBtn = document.querySelector('.toolbar-btn');
     
     if (mode === 'chat') {
-        webToggle.style.display = 'none';
+        webToggle.style.display = '';      // Chat模式也显示联网搜索
         thinkToggle.classList.add('visible');
-        if (attachBtn) attachBtn.style.display = ''; // Chat模式也保留上传
+        if (attachBtn) attachBtn.style.display = '';
     } else {
         webToggle.style.display = '';
         thinkToggle.classList.remove('visible');
         thinkToggle.classList.remove('active');
         deepThinkEnabled = false;
+    }
+    
+    // 更新标题
+    const titleEl = document.getElementById('chatTitle');
+    if (titleEl) {
+        titleEl.textContent = mode === 'agent' ? 'DocAgent' : 'Chat';
     }
     
     // 更新欢迎词
@@ -1305,6 +1320,12 @@ function switchMode(mode) {
     const saved = localStorage.getItem('chatMode');
     if (saved === 'chat') {
         switchMode('chat');
+    }
+    // 如果侧边栏默认收起，模式切换用紧凑模式
+    const sidebar = document.getElementById('sidebar');
+    const modeSwitcher = document.getElementById('headerModeSwitcher');
+    if (sidebar && modeSwitcher && sidebar.classList.contains('collapsed')) {
+        modeSwitcher.classList.add('compact');
     }
 })();
 
@@ -1684,11 +1705,18 @@ async function clearCurrentChat() {
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const modeSwitcher = document.getElementById('headerModeSwitcher');
     if (window.innerWidth <= 768) {
         sidebar.classList.toggle('mobile-open');
         overlay.classList.toggle('active');
     } else {
         sidebar.classList.toggle('collapsed');
+        // 侧边栏收起时，模式切换只显示图标
+        if (sidebar.classList.contains('collapsed')) {
+            modeSwitcher.classList.add('compact');
+        } else {
+            modeSwitcher.classList.remove('compact');
+        }
     }
 }
 function closeSidebarMobile() {
