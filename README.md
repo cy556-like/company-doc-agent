@@ -1,4 +1,4 @@
-# 企业文档智能助手 Agent
+# 企业智能助手 Agent
 
 <p align="center">
   <img src="assets/demo.png" alt="Demo" width="800">
