@@ -29,7 +29,67 @@
             --error: #ef4444;
             --warning: #f59e0b;
             --sidebar-width: 260px;
+            --code-bg: #1e1e1e;
+            --code-header-bg: #2d2d2d;
+            --inline-code-bg: rgba(0,0,0,0.06);
         }
+
+        /* ===== 暗色模式 ===== */
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2a2a2a;
+            --bg-sidebar: #1e1e1e;
+            --bg-chat: #1a1a1a;
+            --bg-input: #2a2a2a;
+            --text-primary: #e5e5e5;
+            --text-secondary: #999999;
+            --accent: #e5e5e5;
+            --accent-hover: #ffffff;
+            --user-bubble: #2a2a2a;
+            --ai-bubble: #1e1e1e;
+            --border: #3a3a3a;
+            --border-sidebar: #2e2e2e;
+            --code-bg: #0d0d0d;
+            --code-header-bg: #1a1a1a;
+            --inline-code-bg: rgba(255,255,255,0.1);
+        }
+        [data-theme="dark"] .login-page { background: #1a1a1a; }
+        [data-theme="dark"] .login-card { background: #2a2a2a; border-color: #3a3a3a; }
+        [data-theme="dark"] .form-group input { background: #1a1a1a; border-color: #3a3a3a; color: #e5e5e5; }
+        [data-theme="dark"] .new-chat-btn { border-color: #3a3a3a; }
+        [data-theme="dark"] .new-chat-btn:hover { background: #2a2a2a; border-color: #4a4a4a; }
+        [data-theme="dark"] .chat-item:hover { background: #2a2a2a; }
+        [data-theme="dark"] .chat-item.active { background: #333; }
+        [data-theme="dark"] .model-select { background: #2a2a2a; border-color: #3a3a3a; color: #e5e5e5; }
+        [data-theme="dark"] .model-select option { background: #2a2a2a; color: #e5e5e5; }
+        [data-theme="dark"] .header-btn { border-color: #3a3a3a; color: #999; }
+        [data-theme="dark"] .header-btn:hover { border-color: #4a4a4a; color: #e5e5e5; background: #2a2a2a; }
+        [data-theme="dark"] .toggle-sidebar-btn { border-color: #3a3a3a; color: #999; }
+        [data-theme="dark"] .toggle-sidebar-btn:hover { border-color: #4a4a4a; color: #e5e5e5; background: #2a2a2a; }
+        [data-theme="dark"] .icon-btn.attach { border-color: #3a3a3a; color: #999; }
+        [data-theme="dark"] .icon-btn.attach:hover { border-color: #4a4a4a; color: #e5e5e5; background: #2a2a2a; }
+        [data-theme="dark"] .input-row textarea { background: #2a2a2a; border-color: #3a3a3a; color: #e5e5e5; }
+        [data-theme="dark"] .input-row textarea::placeholder { color: #666; }
+        [data-theme="dark"] .file-bar { background: #2a2a2a; border-color: #3a3a3a; }
+        [data-theme="dark"] .modal { background: #2a2a2a; border-color: #3a3a3a; }
+        [data-theme="dark"] .rename-card { background: #2a2a2a; border-color: #3a3a3a; }
+        [data-theme="dark"] .rename-card input { background: #1a1a1a; border-color: #3a3a3a; color: #e5e5e5; }
+        [data-theme="dark"] .msg-action-btn:hover { background: #2a2a2a; }
+        [data-theme="dark"] .scroll-bottom-btn { background: #2a2a2a; border-color: #3a3a3a; color: #999; }
+        [data-theme="dark"] .toast { background: #e5e5e5; color: #1a1a1a; }
+        [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #4a4a4a; }
+        [data-theme="dark"] .modal .upload-section { background: #1a1a1a; border-color: #3a3a3a; }
+        [data-theme="dark"] .modal .doc-item:hover { background: #1a1a1a; }
+        [data-theme="dark"] .modal .close-btn { background: #1a1a1a; color: #e5e5e5; border-color: #3a3a3a; }
+        [data-theme="dark"] .cancel-btn { background: #1a1a1a; color: #e5e5e5; border-color: #3a3a3a; }
+        [data-theme="dark"] .message.assistant .bubble th { background: #2a2a2a; }
+        [data-theme="dark"] .quick-action { background: #2a2a2a; border-color: #3a3a3a; }
+        [data-theme="dark"] .quick-action:hover { border-color: #e5e5e5; color: #e5e5e5; background: rgba(229,229,229,0.05); }
+        [data-theme="dark"] .typing-indicator .dots { background: var(--ai-bubble); border-color: var(--border); }
+        [data-theme="dark"] .tool-tag { background: rgba(229,229,229,0.08); border-color: rgba(229,229,229,0.15); color: #e5e5e5; }
+        [data-theme="dark"] .tool-tag.done { background: rgba(229,229,229,0.05); color: var(--success); }
+        [data-theme="dark"] .thinking-indicator { background: rgba(229,229,229,0.05); color: #e5e5e5; }
+        [data-theme="dark"] .thinking-indicator .spinner { border-color: rgba(229,229,229,0.12); border-top-color: #e5e5e5; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
@@ -401,11 +461,25 @@
 
         /* Inline code */
         .message.assistant .bubble code:not(pre code) {
-            background: rgba(0,0,0,0.06);
+            background: var(--inline-code-bg);
             padding: 2px 5px;
             border-radius: 4px;
             font-size: 13px;
             font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        /* ===== 用户气泡图片 ===== */
+        .message.user .bubble img.chat-img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            margin-top: 8px;
+            display: block;
+        }
+        .message.user .bubble .img-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
         }
 
         /* Code blocks */
@@ -414,7 +488,7 @@
             margin: 10px 0;
             border-radius: 8px;
             overflow: hidden;
-            background: #1e1e1e;
+            background: var(--code-bg);
         }
         .message.assistant .bubble pre code {
             display: block;
@@ -423,7 +497,7 @@
             line-height: 1.5;
             font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
             overflow-x: auto;
-            background: #1e1e1e;
+            background: var(--code-bg);
             color: #d4d4d4;
         }
         .code-block-header {
@@ -431,7 +505,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 6px 12px;
-            background: #2d2d2d;
+            background: var(--code-header-bg);
             color: #999;
             font-size: 12px;
             font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
@@ -913,6 +987,7 @@
             <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="切换侧边栏">☰</button>
             <h1>DocAgent</h1>
             <div class="header-actions">
+                <button class="header-btn" onclick="toggleTheme()" title="切换暗色/亮色模式" id="themeBtn">🌙</button>
                 <select class="model-select" id="modelSelect" onchange="switchModel()" title="切换模型"></select>
                 <button class="header-btn" onclick="showDocs()">知识库</button>
                 <button class="header-btn danger" onclick="clearCurrentChat()">清除当前</button>
@@ -995,6 +1070,7 @@
 <script>
 let currentUser = null;
 let selectedFile = null;
+let selectedFileBase64 = null; // 用于图片气泡展示
 let isLoading = false;
 let currentChatId = null;
 let allChats = [];
@@ -1002,6 +1078,23 @@ let renamingChatId = null;
 let currentAbortController = null; // 用于停止生成
 let userScrolledUp = false; // 用于智能自动滚动
 let lastMessageText = ''; // 用于重新生成
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB 文件大小限制
+
+// ===== 暗色模式 =====
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+    document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
+}
+// 初始化主题
+(function() {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+})();
 
 // ===== Marked 配置 =====
 if (typeof marked !== 'undefined') {
@@ -1641,7 +1734,12 @@ async function sendMessage() {
     if (selectedFile && message) {
         const isImage = selectedFile.type.startsWith('image/');
         const icon = isImage ? '🖼️' : '📎';
-        addMessageToUI('user', `${icon} ${selectedFile.name}\n${message}`);
+        // 如果是图片，在气泡中直接展示图片
+        if (isImage && selectedFileBase64) {
+            addMessageToUI('user', `${icon} ${selectedFile.name}\n${message}`, selectedFileBase64);
+        } else {
+            addMessageToUI('user', `${icon} ${selectedFile.name}\n${message}`);
+        }
         input.value = ''; autoResize(input);
         const bubble = createStreamingBubble();
         const formData = new FormData();
@@ -1683,7 +1781,7 @@ async function sendMessage() {
 
 function sendQuick(text) { document.getElementById('msgInput').value = text; sendMessage(); }
 
-function addMessageToUI(role, content) {
+function addMessageToUI(role, content, imageBase64) {
     const container = document.getElementById('chatMessages');
     const div = document.createElement('div');
     div.className = `message ${role}`;
@@ -1697,7 +1795,12 @@ function addMessageToUI(role, content) {
     if (role === 'assistant') {
         renderBubbleMarkdown(bubble, content);
     } else {
-        bubble.innerHTML = escapeHtml(content).replace(/\n/g, '<br>');
+        let htmlContent = escapeHtml(content).replace(/\n/g, '<br>');
+        // 如果有图片base64，在气泡中添加图片
+        if (imageBase64) {
+            htmlContent += `<img class="chat-img" src="${imageBase64}" alt="上传的图片">`;
+        }
+        bubble.innerHTML = htmlContent;
         bubble.style.whiteSpace = 'pre-wrap';
     }
 
@@ -1776,21 +1879,35 @@ function showTyping(show) { document.getElementById('typingIndicator').style.dis
 function onFileSelected(event) {
     const file = event.target.files[0];
     if (file) {
+        // 文件大小限制
+        if (file.size > MAX_FILE_SIZE) {
+            showToast('文件大小不能超过 50MB');
+            event.target.value = '';
+            return;
+        }
         setFilePreview(file);
     }
 }
 
 function setFilePreview(file) {
     selectedFile = file;
+    selectedFileBase64 = null;
     const isImage = file.type.startsWith('image/');
     document.getElementById('fileName').textContent = file.name;
     document.getElementById('fileIcon').textContent = isImage ? '🖼️' : '📎';
     document.getElementById('fileBar').style.display = 'flex';
     document.getElementById('msgInput').placeholder = '针对此文件输入问题，或修改要求...';
+    // 如果是图片，预读base64用于气泡展示
+    if (isImage) {
+        const reader = new FileReader();
+        reader.onload = function(e) { selectedFileBase64 = e.target.result; };
+        reader.readAsDataURL(file);
+    }
 }
 
 function removeFile() {
     selectedFile = null;
+    selectedFileBase64 = null;
     document.getElementById('fileInput').value = '';
     document.getElementById('fileBar').style.display = 'none';
     document.getElementById('fileIcon').textContent = '📎';
@@ -1812,6 +1929,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 const file = item.getAsFile();
                 if (file) {
+                    if (file.size > MAX_FILE_SIZE) { showToast('图片大小不能超过 50MB'); return; }
                     setFilePreview(file);
                     showToast('已粘贴图片，输入问题后发送');
                 }
