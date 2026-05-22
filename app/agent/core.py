@@ -223,7 +223,7 @@ async def chat_stream_generator(user_input: str, session_id: str = "default", we
     """
     # Chat模式：直接LLM对话
     if mode == "chat":
-        async for chunk in _chat_mode_stream(user_input, session_id, deep_think=deep_think):
+        async for chunk in _chat_mode_stream(user_input, session_id, deep_think=deep_think, web_search=web_search):
             yield chunk
         return
 
@@ -315,12 +315,28 @@ async def chat_stream_generator(user_input: str, session_id: str = "default", we
     yield {"type": "done"}
 
 
-async def _chat_mode_stream(user_input: str, session_id: str = "default", deep_think: bool = False) -> AsyncGenerator[dict, None]:
-    """Chat模式：直接LLM流式对话，不经过Agent工具调用"""
+async def _chat_mode_stream(user_input: str, session_id: str = "default", deep_think: bool = False, web_search: bool = False) -> AsyncGenerator[dict, None]:
+    """Chat模式：直接LLM流式对话，不经过Agent工具调用，可选联网搜索"""
     llm = create_llm(deep_think=deep_think)
     history = get_session_history(session_id)
     recent_messages = history.messages[-MAX_HISTORY_MESSAGES:]
-    all_messages = recent_messages + [HumanMessage(content=user_input)]
+    
+    # 如果开启联网搜索，先搜索再将结果注入消息
+    search_context = ""
+    if web_search:
+        try:
+            yield {"type": "thinking", "content": "正在联网搜索..."}
+            yield {"type": "tool", "name": "web_search_tool", "display": "联网搜索"}
+            from app.agent.tools import web_search_tool
+            search_result = web_search_tool.invoke(user_input)
+            yield {"type": "tool_done", "name": "web_search_tool", "display": "联网搜索"}
+            search_context = f"\n\n【联网搜索结果】\n{search_result}\n\n请根据以上联网搜索结果回答用户问题。如果搜索结果没有相关信息，请根据自身知识回答。"
+        except Exception as e:
+            yield {"type": "tool_done", "name": "web_search_tool", "display": "联网搜索"}
+            search_context = f"\n\n【联网搜索失败：{str(e)}】请根据自身知识回答。"
+    
+    enhanced_input = user_input + search_context
+    all_messages = recent_messages + [HumanMessage(content=enhanced_input)]
 
     full_response = ""
 
