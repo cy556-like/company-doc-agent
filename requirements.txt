@@ -16,8 +16,8 @@ pypdf>=5.0.0
 docx2txt>=0.8
 fpdf2>=2.7.0
 
-# ===== Frontend =====
-gradio>=5.0.0
+# ===== Security =====
+bcrypt>=4.0.0
 
 # ===== Utils =====
 httpx>=0.27.0
