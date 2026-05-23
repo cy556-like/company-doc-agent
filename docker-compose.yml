@@ -13,6 +13,8 @@ services:
     volumes:
       # 持久化数据（重启不丢失）
       - agent-data:/app/data
+      # 映射静态文件目录，更新前端无需重新build镜像
+      - ./app/static:/app/app/static
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
