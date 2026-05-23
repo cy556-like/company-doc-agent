@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse, FileResponse
@@ -23,7 +23,7 @@ def setup_logging():
     """配置全局日志"""
     log_dir = os.path.join(settings.DATA_DIR, "logs")
     os.makedirs(log_dir, exist_ok=True)
-    
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
@@ -60,7 +60,7 @@ def create_app() -> FastAPI:
         - ChromaDB (向量数据库)
         - FastAPI (后端服务)
         """,
-        version="2.0.0",
+        version="3.0.0",
     )
 
     # CORS 跨域支持
@@ -79,11 +79,17 @@ def create_app() -> FastAPI:
     static_dir = os.path.join(os.path.dirname(__file__), "static")
     os.makedirs(static_dir, exist_ok=True)
 
+    # 确保子目录存在
+    css_dir = os.path.join(static_dir, "css")
+    js_dir = os.path.join(static_dir, "js")
+    os.makedirs(css_dir, exist_ok=True)
+    os.makedirs(js_dir, exist_ok=True)
+
     # 确保下载文件目录存在（修改后的文档）
     modified_dir = os.path.join(static_dir, "modified")
     os.makedirs(modified_dir, exist_ok=True)
 
-    # 挂载静态文件目录（包含 index.html 和修改后的文档）
+    # 挂载静态文件目录（包含 index.html、CSS、JS 和修改后的文档）
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
     # 根路径重定向到美化的前端页面
@@ -94,7 +100,7 @@ def create_app() -> FastAPI:
     # 健康检查
     @app.get("/health")
     async def health():
-        return {"status": "ok", "service": "company-doc-agent"}
+        return {"status": "ok", "service": "company-doc-agent", "version": "3.0.0"}
 
     return app
 
@@ -116,6 +122,9 @@ if __name__ == "__main__":
 
     # 确保临时文件目录存在
     os.makedirs(os.path.join(settings.DATA_DIR, "temp"), exist_ok=True)
+
+    # 确保统计数据目录存在
+    os.makedirs(settings.DATA_DIR, exist_ok=True)
 
     # 初始化日志
     logger = setup_logging()

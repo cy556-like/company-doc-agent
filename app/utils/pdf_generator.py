@@ -85,6 +85,66 @@ def generate_pdf(text, output_path, title="修改后的文档"):
         return _save_as_txt(text, output_path)
 
 
+def generate_chat_pdf(messages: list, session_id: str) -> bytes:
+    """
+    生成对话导出 PDF（返回 bytes）
+
+    Args:
+        messages: 对话消息列表 [{"role": "user"/"assistant", "content": "..."}]
+        session_id: 会话 ID
+
+    Returns:
+        PDF 文件的 bytes 内容
+    """
+    from fpdf import FPDF
+
+    font_path = find_chinese_font()
+    if not font_path:
+        raise RuntimeError("未找到中文字体，无法生成 PDF")
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # 添加中文字体
+    pdf.add_font("ChineseFont", "", font_path, uni=True)
+    pdf.set_font("ChineseFont", "", 12)
+
+    # 标题
+    pdf.set_font("ChineseFont", "", 16)
+    pdf.cell(0, 12, "DocAgent 对话记录", ln=True, align="C")
+    pdf.set_font("ChineseFont", "", 10)
+    pdf.cell(0, 8, f"Session: {session_id[:12]}", ln=True, align="C")
+    pdf.ln(8)
+
+    # 写入对话内容
+    for msg in messages:
+        role = "用户" if msg["role"] == "user" else "助手"
+        content = msg.get("content", "")
+
+        # 角色标签
+        pdf.set_font("ChineseFont", "", 11)
+        if msg["role"] == "user":
+            pdf.set_fill_color(240, 240, 240)
+            pdf.cell(0, 8, f"  {role}：", ln=True, fill=True)
+        else:
+            pdf.set_fill_color(245, 245, 255)
+            pdf.cell(0, 8, f"  {role}：", ln=True, fill=True)
+
+        # 内容
+        pdf.set_font("ChineseFont", "", 10)
+        for line in content.split("\n"):
+            if not line.strip():
+                pdf.ln(3)
+                continue
+            pdf.multi_cell(0, 6, f"  {line}")
+
+        pdf.ln(4)
+
+    # 输出为 bytes
+    return pdf.output()
+
+
 def _save_as_txt(text, output_path):
     """降级方案：保存为 txt 文件"""
     if output_path.lower().endswith(".pdf"):
