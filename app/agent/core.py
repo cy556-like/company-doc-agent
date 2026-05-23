@@ -68,7 +68,7 @@ def create_llm(deep_think: bool = False):
         model=model,
         temperature=0.1 if not deep_think else 0.3,
         streaming=True,
-        max_tokens=4096,
+        max_tokens=8192,
     )
 
 
@@ -443,7 +443,7 @@ async def chat_stream_generator_multimodal(multimodal_content: list, session_id:
         model=use_model,
         temperature=0.1,
         streaming=True,
-        max_tokens=4096,
+        max_tokens=8192,
     )
 
     history = get_session_history(session_id)
