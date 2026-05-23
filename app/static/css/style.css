@@ -129,7 +129,7 @@ body {
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 .form-group input { width: 100%; padding: 11px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; transition: border 0.2s, box-shadow 0.2s; }
-.form-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(26,26,26,0.08); }
+.form-group input:focus { border-color: var(--border); box-shadow: none; }
 .form-group input::placeholder { color: #b0b0b0; }
 .btn { width: 100%; padding: 11px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .btn-primary { background: var(--text-primary); color: white; }
@@ -222,7 +222,7 @@ body {
     border-radius: 8px;
     transition: border-color 0.2s;
 }
-.chat-search:focus-within { border-color: var(--accent); }
+.chat-search:focus-within { border-color: var(--border); }
 .chat-search .search-icon { font-size: 13px; opacity: 0.5; flex-shrink: 0; }
 .chat-search input {
     flex: 1;
@@ -396,7 +396,7 @@ body {
 .header-btn:hover { border-color: #ccc; color: var(--text-primary); background: var(--bg-secondary); }
 .header-btn.danger:hover { border-color: var(--error); color: var(--error); background: rgba(239,68,68,0.04); }
 .model-select { padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px; cursor: pointer; outline: none; transition: border 0.2s; }
-.model-select:hover, .model-select:focus { border-color: var(--text-primary); }
+.model-select:hover, .model-select:focus { border-color: var(--border); }
 .model-select option { background: #ffffff; color: var(--text-primary); }
 
 /* ===== Chat Content Area ===== */
@@ -581,7 +581,7 @@ body {
 
 .chat-input-area { padding: 16px 24px 20px; background: var(--bg-chat); flex-shrink: 0; }
 .input-container { max-width: 800px; margin: 0 auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
-.input-container:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(26,26,26,0.08); }
+.input-container:focus-within { border-color: var(--border); box-shadow: none; }
 .file-bar { display: none; align-items: center; gap: 8px; padding: 8px 12px 0; font-size: 13px; }
 .file-bar .file-name { flex: 1; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-bar .remove-file { cursor: pointer; color: var(--text-secondary); font-size: 16px; transition: color 0.15s; }
@@ -763,7 +763,7 @@ body {
 .rename-card { background: #ffffff; border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 360px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
 .rename-card h3 { margin-bottom: 16px; color: var(--text-primary); font-size: 16px; font-weight: 600; }
 .rename-card input { width: 100%; padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; margin-bottom: 16px; transition: border 0.2s; }
-.rename-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(26,26,26,0.08); }
+.rename-card input:focus { border-color: var(--border); box-shadow: none; }
 .rename-card .rename-btns { display: flex; gap: 10px; }
 .rename-card .rename-btns button { flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; transition: all 0.15s; font-weight: 500; }
 .rename-card .cancel-btn { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border); }
@@ -987,8 +987,7 @@ body {
     .chat-item .chat-actions { display: flex; }
     .chat-item .chat-time { display: none; }
     .message-actions { display: none; }
-    /* Mobile: hide stats panel in header */
-    .header-btn.stats-btn { display: none; }
+
 }
 @media (max-width: 400px) {
     .header-btn { padding: 5px 8px; font-size: 11px; }
@@ -999,10 +998,8 @@ body {
 
 /* ===== Focus visible for keyboard navigation ===== */
 :focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline: none;
 }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline: none;
 }
