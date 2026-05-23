@@ -1,6 +1,6 @@
 """
 用户认证管理模块
-支持用户注册、登录验证，密码使用 SHA256 加密存储
+支持用户注册、登录验证，密码使用 bcrypt 加盐加密存储
 """
 import os
 import json
@@ -20,10 +20,10 @@ def _load_users() -> dict:
     if os.path.exists(users_file):
         with open(users_file, "r", encoding="utf-8") as f:
             return json.load(f)
-    # 默认管理员账号
+    # 默认管理员账号（bcrypt hash of "admin123"）
     default_users = {
         "admin": {
-            "password_hash": hashlib.sha256("admin123".encode()).hexdigest(),
+            "password_hash": _hash_password("admin123"),
         }
     }
     _save_users(default_users)
@@ -39,8 +39,24 @@ def _save_users(users: dict) -> None:
 
 
 def _hash_password(password: str) -> str:
-    """密码哈希"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """密码哈希 - 使用 bcrypt 加盐加密"""
+    try:
+        import bcrypt
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    except ImportError:
+        # fallback: 如果 bcrypt 未安装，使用 SHA256（不推荐）
+        return hashlib.sha256(password.encode()).hexdigest()
+
+
+def _verify_password(password: str, password_hash: str) -> bool:
+    """验证密码"""
+    try:
+        import bcrypt
+        # 尝试 bcrypt 验证
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+    except (ImportError, ValueError):
+        # fallback: SHA256 验证（兼容旧密码）
+        return password_hash == hashlib.sha256(password.encode()).hexdigest()
 
 
 def register_user(username: str, password: str) -> dict:
@@ -77,7 +93,12 @@ def login_user(username: str, password: str) -> dict:
     if username not in users:
         return {"success": False, "message": "用户名或密码错误"}
 
-    if users[username]["password_hash"] != _hash_password(password):
+    if not _verify_password(password, users[username]["password_hash"]):
         return {"success": False, "message": "用户名或密码错误"}
+
+    # 如果密码是旧的 SHA256 格式，自动升级为 bcrypt
+    if not users[username]["password_hash"].startswith("$2"):
+        users[username]["password_hash"] = _hash_password(password)
+        _save_users(users)
 
     return {"success": True, "message": "登录成功"}
