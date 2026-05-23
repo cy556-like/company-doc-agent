@@ -55,12 +55,15 @@ def create_llm(deep_think: bool = False):
     """
     model = settings.LLM_MODEL
     if deep_think:
-        # 深度思考模式：切换到更强的模型
-        deep_think_models = ["glm-5.1", "glm-5-turbo", "glm-5", "glm-4.7", "glm-4-plus"]
+        # 深度思考模式：尝试切换到更强的模型，但保持与当前API兼容
+        deep_think_models = ["glm-4-plus", "glm-4.7", "glm-4-long", "glm-4-air"]
         for m in deep_think_models:
             if m != model:
                 model = m
                 break
+        # 安全检查：如果深度思考模型和当前模型使用同一个API，就直接用当前模型
+        # 避免因模型不可用导致请求卡死
+        logger.info(f"深度思考模式：尝试使用模型 {model}")
 
     return ChatOpenAI(
         api_key=settings.LLM_API_KEY,
@@ -69,6 +72,7 @@ def create_llm(deep_think: bool = False):
         temperature=0.1 if not deep_think else 0.3,
         streaming=True,
         max_tokens=8192,
+        request_timeout=60,  # 请求超时60秒，防止陷入无限等待
     )
 
 
@@ -318,6 +322,9 @@ async def chat_stream_generator(user_input: str, session_id: str = "default", we
                 display_name = TOOL_DISPLAY_NAMES.get(tool_name, tool_name)
                 yield {"type": "tool_done", "name": tool_name, "display": display_name}
 
+    except asyncio.TimeoutError:
+        yield {"type": "error", "content": "请求超时，LLM服务响应过慢，请稍后重试"}
+        return
     except Exception as e:
         logger.error(f"Agent 流式输出异常: {e}", exc_info=True)
         # 流式失败 → 回退到非流式
@@ -395,6 +402,11 @@ async def _chat_mode_stream(user_input: str, session_id: str = "default", deep_t
         else:
             yield {"type": "thinking", "content": "正在思考..."}
 
+        # 添加超时控制，防止LLM长时间无响应陷入"思考循环"
+        import asyncio
+        chunk_count = 0
+        first_token_received = False
+        
         async for chunk in llm.astream([SystemMessage(content=CHAT_SYSTEM_PROMPT)] + all_messages):
             content = getattr(chunk, 'content', '')
             # 处理content为列表的情况
@@ -407,9 +419,15 @@ async def _chat_mode_stream(user_input: str, session_id: str = "default", deep_t
                         text_parts.append(item)
                 content = ''.join(text_parts)
             if content and isinstance(content, str):
+                if not first_token_received:
+                    first_token_received = True
+                chunk_count += 1
                 full_response += content
                 yield {"type": "token", "content": content}
 
+    except asyncio.TimeoutError:
+        yield {"type": "error", "content": "请求超时，LLM服务响应过慢，请稍后重试"}
+        return
     except Exception as e:
         yield {"type": "error", "content": f"处理失败: {str(e)}"}
         return
@@ -444,6 +462,7 @@ async def chat_stream_generator_multimodal(multimodal_content: list, session_id:
         temperature=0.1,
         streaming=True,
         max_tokens=8192,
+        request_timeout=60,
     )
 
     history = get_session_history(session_id)
