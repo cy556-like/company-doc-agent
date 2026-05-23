@@ -1,9 +1,15 @@
 """
 应用配置管理
 支持动态切换 LLM 模型
+
+优化:
+- [#22] 配置中心：支持运行时热更新，无需重启
 """
 import os
+import logging
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -35,7 +41,7 @@ DEFAULT_VISION_MODEL = "glm-4v-plus"
 
 
 class Settings:
-    """应用配置"""
+    """应用配置（[#22] 支持运行时热更新）"""
 
     # LLM 配置
     LLM_API_KEY: str = os.getenv("LLM_API_KEY", "")
@@ -55,6 +61,23 @@ class Settings:
     CHROMA_DIR: str = os.getenv("CHROMA_DIR", os.path.join(DATA_DIR, "chroma_db"))
     EMPLOYEES_FILE: str = os.getenv("EMPLOYEES_FILE", os.path.join(DATA_DIR, "employees.json"))
 
+    # [#22] 配置变更回调列表
+    _change_callbacks = []
+
+    @classmethod
+    def on_change(cls, callback):
+        """注册配置变更回调"""
+        cls._change_callbacks.append(callback)
+
+    @classmethod
+    def notify_change(cls, key: str, old_value, new_value):
+        """通知配置变更"""
+        for cb in cls._change_callbacks:
+            try:
+                cb(key, old_value, new_value)
+            except Exception as e:
+                logger.warning(f"配置变更回调异常: {e}")
+
 
 settings = Settings()
 
@@ -63,10 +86,14 @@ def set_current_model(model_id: str) -> bool:
     """动态切换当前使用的模型"""
     valid_ids = [m["id"] for m in AVAILABLE_MODELS]
     if model_id in valid_ids:
+        old = settings.LLM_MODEL
         settings.LLM_MODEL = model_id
         # 重置 Agent 单例，让下次对话使用新模型
         from app.agent.core import reset_agent
         reset_agent()
+        # [#22] 通知配置变更
+        Settings.notify_change("LLM_MODEL", old, model_id)
+        logger.info(f"模型切换: {old} → {model_id}")
         return True
     return False
 

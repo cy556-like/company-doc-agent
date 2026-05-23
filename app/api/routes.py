@@ -2,16 +2,23 @@
 FastAPI 路由定义
 提供 REST API 接口供外部调用
 包含：认证（JWT）、聊天（含流式）、文档管理、会话管理、模型管理、统计
+
+优化:
+- [#20] 可观测性：请求日志中间件 + 性能指标
+- [#22] 配置中心：运行时热更新配置 API
+- [#23] API 分页：对话列表/文档列表支持分页
+- [#24] 健康检查增强：检查 ChromaDB/LLM API/磁盘等依赖
 """
 import os
 import asyncio
+import time
 import shutil
 import json
 import base64
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Request
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Request, Query
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
 
@@ -32,6 +39,37 @@ logger = logging.getLogger(__name__)
 MAX_FILE_SIZE = 50 * 1024 * 1024
 
 router = APIRouter()
+
+
+# ===== [#20] 可观测性：请求计时 + 性能日志 =====
+_request_stats = {
+    "total_requests": 0,
+    "total_errors": 0,
+    "avg_response_time": 0.0,
+    "endpoint_stats": {},  # path -> {count, avg_time, errors}
+}
+
+
+def _record_request(path: str, duration: float, is_error: bool = False):
+    """记录请求统计"""
+    _request_stats["total_requests"] += 1
+    if is_error:
+        _request_stats["total_errors"] += 1
+    
+    # 更新平均响应时间
+    total = _request_stats["total_requests"]
+    prev_avg = _request_stats["avg_response_time"]
+    _request_stats["avg_response_time"] = prev_avg + (duration - prev_avg) / total
+    
+    # 端点统计
+    if path not in _request_stats["endpoint_stats"]:
+        _request_stats["endpoint_stats"][path] = {"count": 0, "avg_time": 0.0, "errors": 0}
+    ep = _request_stats["endpoint_stats"][path]
+    ep["count"] += 1
+    prev = ep["avg_time"]
+    ep["avg_time"] = prev + (duration - prev) / ep["count"]
+    if is_error:
+        ep["errors"] += 1
 
 
 # ===== JWT 认证依赖 =====
@@ -111,28 +149,43 @@ class RenameRequest(BaseModel):
     new_title: str
 
 
+# [#22] 配置中心请求模型
+class ConfigUpdateRequest(BaseModel):
+    """配置更新请求"""
+    key: str  # 配置项名称，如 LLM_MODEL, MAX_TOOL_ROUNDS 等
+    value: str  # 新值（字符串形式，内部转换）
+
+
 # ===== 认证接口 =====
 
 @router.post("/auth/login", summary="用户登录")
 async def auth_login(req: LoginRequest):
     """用户登录验证，返回 JWT Token"""
-    result = login_user(req.username, req.password)
-    if result.get("success"):
-        # 签发 JWT Token
-        token = create_token(req.username)
-        result["token"] = token
-    return result
+    start = time.time()
+    try:
+        result = login_user(req.username, req.password)
+        if result.get("success"):
+            # 签发 JWT Token
+            token = create_token(req.username)
+            result["token"] = token
+        return result
+    finally:
+        _record_request("/auth/login", time.time() - start)
 
 
 @router.post("/auth/register", summary="用户注册")
 async def auth_register(req: RegisterRequest):
     """用户注册"""
-    result = register_user(req.username, req.password)
-    if result.get("success"):
-        # 注册成功也签发 Token
-        token = create_token(req.username)
-        result["token"] = token
-    return result
+    start = time.time()
+    try:
+        result = register_user(req.username, req.password)
+        if result.get("success"):
+            # 注册成功也签发 Token
+            token = create_token(req.username)
+            result["token"] = token
+        return result
+    finally:
+        _record_request("/auth/register", time.time() - start)
 
 
 @router.get("/auth/me", summary="验证 Token 有效性")
@@ -156,6 +209,7 @@ async def chat_api(req: ChatRequest, username: str = Depends(get_current_user)):
     - 支持员工信息查询
     - 支持多轮对话
     """
+    start = time.time()
     try:
         response = chat(req.message, req.session_id, web_search=req.web_search, mode=req.mode, deep_think=req.deep_think)
         # 更新会话时间
@@ -169,7 +223,10 @@ async def chat_api(req: ChatRequest, username: str = Depends(get_current_user)):
         record_message(username=username or "anonymous", model_id=get_current_model())
         return ChatResponse(response=response, session_id=req.session_id)
     except Exception as e:
+        _record_request("/chat", time.time() - start, is_error=True)
         raise HTTPException(status_code=500, detail=f"Agent 处理失败: {str(e)}")
+    finally:
+        _record_request("/chat", time.time() - start)
 
 
 @router.post("/chat/stream", summary="与 Agent 对话（流式 SSE）")
@@ -178,15 +235,13 @@ async def chat_stream_api(req: ChatRequest, username: str = Depends(get_current_
     流式对话接口：逐 token 输出，同时显示工具调用进度
     返回 Server-Sent Events (SSE) 流
     """
+    start = time.time()
     # 记录统计
     record_message(username=username or "anonymous", model_id=get_current_model())
 
     async def event_generator():
         async for chunk in chat_stream_generator(req.message, req.session_id, web_search=req.web_search, mode=req.mode, deep_think=req.deep_think):
             yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
-            # 记录工具使用
-            if chunk.get("type") == "tool":
-                from app.utils.stats import record_message as _rm
         # 更新会话时间
         try:
             parts = req.session_id.split("_", 1)
@@ -194,6 +249,7 @@ async def chat_stream_api(req: ChatRequest, username: str = Depends(get_current_
                 update_chat_time(parts[0], req.session_id)
         except Exception:
             pass
+        _record_request("/chat/stream", time.time() - start)
 
     return StreamingResponse(
         event_generator(),
@@ -223,6 +279,7 @@ async def chat_with_file_stream(
     - 其他文件：读取文本内容（如有）传给LLM
     返回 Server-Sent Events (SSE) 流
     """
+    start = time.time()
     # 记录统计
     record_message(username=username or "anonymous", model_id=get_current_model())
 
@@ -265,6 +322,7 @@ async def chat_with_file_stream(
                     update_chat_time(parts[0], session_id)
             except Exception:
                 pass
+            _record_request("/chat-with-file/stream", time.time() - start)
 
         return StreamingResponse(
             event_generator(),
@@ -309,6 +367,7 @@ async def chat_with_file_stream(
                 update_chat_time(parts[0], session_id)
         except Exception:
             pass
+        _record_request("/chat-with-file/stream", time.time() - start)
 
     return StreamingResponse(
         event_generator(),
@@ -369,10 +428,24 @@ async def search_api(req: SearchRequest):
 
 
 @router.get("/documents", summary="列出所有已索引文档")
-async def list_documents():
-    """获取知识库中所有文档列表"""
+async def list_documents(
+    page: int = Query(1, ge=1, description="页码"),          # [#23] 分页
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+):
+    """获取知识库中所有文档列表（支持分页）"""
     docs = list_indexed_documents()
-    return {"documents": docs, "count": len(docs)}
+    total = len(docs)
+    # 分页
+    start = (page - 1) * page_size
+    end = start + page_size
+    paginated = docs[start:end]
+    return {
+        "documents": paginated,
+        "count": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size,
+    }
 
 
 @router.delete("/documents/{filename}", summary="从知识库删除文档")
@@ -408,10 +481,24 @@ async def delete_history(session_id: str):
 # ===== 会话管理接口 =====
 
 @router.get("/chats", summary="获取用户会话列表")
-async def get_chats(username: str):
-    """获取用户的所有会话列表"""
+async def get_chats(
+    username: str,
+    page: int = Query(1, ge=1, description="页码"),          # [#23] 分页
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+):
+    """获取用户的所有会话列表（支持分页）"""
     chats = list_chats(username)
-    return {"success": True, "chats": chats}
+    total = len(chats)
+    start = (page - 1) * page_size
+    end = start + page_size
+    paginated = chats[start:end]
+    return {
+        "success": True,
+        "chats": paginated,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 @router.post("/chats", summary="创建新会话")
@@ -460,7 +547,80 @@ async def set_model(req: ModelSetRequest):
 async def get_usage_stats(username: str = Depends(get_current_user)):
     """获取系统使用统计数据"""
     stats = get_stats()
+    # [#20] 附加 API 性能指标
+    stats["api_performance"] = {
+        "total_requests": _request_stats["total_requests"],
+        "total_errors": _request_stats["total_errors"],
+        "avg_response_time_ms": round(_request_stats["avg_response_time"] * 1000, 2),
+        "error_rate": round(_request_stats["total_errors"] / max(_request_stats["total_requests"], 1) * 100, 2),
+    }
     return {"success": True, "stats": stats}
+
+
+# ===== [#22] 配置中心 API =====
+
+@router.get("/config", summary="获取运行时配置")
+async def get_config(username: str = Depends(require_auth)):
+    """获取当前运行时配置（隐藏敏感信息）"""
+    return {
+        "success": True,
+        "config": {
+            "LLM_MODEL": settings.LLM_MODEL,
+            "LLM_BASE_URL": settings.LLM_BASE_URL,
+            "EMBEDDING_MODEL": settings.EMBEDDING_MODEL,
+            "APP_HOST": settings.APP_HOST,
+            "APP_PORT": settings.APP_PORT,
+            "GITHUB_TOKEN_CONFIGURED": bool(os.getenv("GITHUB_TOKEN", "")),
+            "SMTP_CONFIGURED": bool(os.getenv("SMTP_HOST", "")),
+            "DATABASE_CONFIGURED": bool(os.getenv("DATABASE_URL", "")),
+        }
+    }
+
+
+@router.post("/config", summary="更新运行时配置（热更新）")
+async def update_config(req: ConfigUpdateRequest, username: str = Depends(require_auth)):
+    """
+    [#22] 运行时热更新配置，无需重启服务
+    支持更新的配置项：LLM_MODEL, APP_PORT 等
+    """
+    allowed_keys = {"LLM_MODEL", "APP_PORT", "EMBEDDING_MODEL"}
+    
+    if req.key not in allowed_keys:
+        raise HTTPException(status_code=400, detail=f"不允许更新的配置项: {req.key}。支持: {allowed_keys}")
+    
+    old_value = getattr(settings, req.key, None)
+    if old_value is None:
+        raise HTTPException(status_code=400, detail=f"未知的配置项: {req.key}")
+    
+    # 类型转换
+    try:
+        if req.key == "APP_PORT":
+            new_value = int(req.value)
+        else:
+            new_value = req.value
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"配置值类型错误: {req.key} 期望 {type(old_value).__name__}")
+    
+    # 应用更新
+    setattr(settings, req.key, new_value)
+    
+    # 如果更新了模型，重置 Agent
+    if req.key == "LLM_MODEL":
+        reset_agent()
+        logger.info(f"配置热更新: {req.key} = {new_value}, Agent 已重置")
+    elif req.key == "EMBEDDING_MODEL":
+        from app.rag.document import reset_vector_store
+        reset_vector_store()
+        logger.info(f"配置热更新: {req.key} = {new_value}, 向量数据库已重置")
+    
+    logger.info(f"配置热更新: {req.key} 由 {old_value} 变更为 {new_value}, 操作者: {username}")
+    
+    return {
+        "success": True,
+        "message": f"配置 {req.key} 已更新",
+        "old_value": str(old_value),
+        "new_value": str(new_value),
+    }
 
 
 # ===== 导出对话接口 =====
@@ -503,3 +663,87 @@ async def export_chat(session_id: str, format: str = "md"):
                 "Content-Disposition": f"attachment; filename=chat_{session_id[:12]}.md"
             }
         )
+
+
+# ===== [#24] 健康检查增强 =====
+
+@router.get("/health/detailed", summary="详细健康检查")
+async def health_detailed():
+    """
+    [#24] 详细健康检查：检查所有依赖组件状态
+    - ChromaDB 可用性
+    - LLM API 可达性
+    - 磁盘空间
+    - 内存使用
+    """
+    import platform
+    
+    checks = {}
+    overall = "healthy"
+    
+    # 1. ChromaDB 检查
+    try:
+        from app.rag.document import get_vector_store
+        vs = get_vector_store()
+        collection = vs._collection
+        count = collection.count()
+        checks["chromadb"] = {"status": "ok", "document_count": count}
+    except Exception as e:
+        checks["chromadb"] = {"status": "error", "message": str(e)[:200]}
+        overall = "degraded"
+    
+    # 2. LLM API 检查
+    try:
+        import httpx
+        api_url = settings.LLM_BASE_URL.rstrip("/") + "/models"
+        resp = httpx.get(api_url, timeout=5)
+        if resp.status_code == 200:
+            checks["llm_api"] = {"status": "ok", "model": settings.LLM_MODEL}
+        else:
+            checks["llm_api"] = {"status": "error", "code": resp.status_code}
+            overall = "degraded"
+    except Exception as e:
+        checks["llm_api"] = {"status": "unreachable", "message": str(e)[:100]}
+        overall = "degraded"
+    
+    # 3. 磁盘空间检查
+    try:
+        disk_usage = shutil.disk_usage(settings.DATA_DIR)
+        free_gb = disk_usage.free / (1024 ** 3)
+        total_gb = disk_usage.total / (1024 ** 3)
+        usage_pct = (disk_usage.used / disk_usage.total) * 100
+        checks["disk"] = {
+            "status": "ok" if usage_pct < 90 else "warning",
+            "free_gb": round(free_gb, 2),
+            "total_gb": round(total_gb, 2),
+            "usage_percent": round(usage_pct, 1),
+        }
+        if usage_pct >= 90:
+            overall = "degraded"
+    except Exception as e:
+        checks["disk"] = {"status": "error", "message": str(e)[:100]}
+    
+    # 4. 内存检查
+    try:
+        import psutil
+        mem = psutil.virtual_memory()
+        checks["memory"] = {
+            "status": "ok" if mem.percent < 90 else "warning",
+            "total_gb": round(mem.total / (1024 ** 3), 2),
+            "used_percent": mem.percent,
+        }
+    except ImportError:
+        checks["memory"] = {"status": "unknown", "message": "psutil not installed"}
+    
+    # 5. 系统信息
+    checks["system"] = {
+        "python_version": platform.python_version(),
+        "platform": platform.system(),
+        "version": "4.0.0",
+    }
+    
+    return {
+        "status": overall,
+        "checks": checks,
+        "timestamp": time.time(),
+    }

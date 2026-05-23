@@ -1,8 +1,13 @@
 """
 文档处理与向量化模块 (RAG)
 负责：加载文档 → 分块 → 向量化 → 存入 ChromaDB → 检索
+
+优化:
+- [#9] RAG 检索质量提升：混合检索（向量 + BM25关键词） + 重排序
+- [#10] 引用溯源：返回结果标注文档名 + 段落位置 + chunk_id
 """
 import os
+import re
 import json
 import logging
 from typing import Optional
@@ -89,7 +94,11 @@ def split_documents(docs: list, chunk_size: int = 500, chunk_overlap: int = 100)
         chunk_overlap=chunk_overlap,
         separators=["\n\n", "\n", "。", "；", "，", " ", ""],
     )
-    return splitter.split_documents(docs)
+    chunks = splitter.split_documents(docs)
+    # [#10] 给每个 chunk 分配唯一 ID，用于引用溯源
+    for i, chunk in enumerate(chunks):
+        chunk.metadata["chunk_index"] = i
+    return chunks
 
 
 def index_document(file_path: str, filename: str = None) -> dict:
@@ -158,9 +167,103 @@ def index_document(file_path: str, filename: str = None) -> dict:
     }
 
 
+# ===== [#9] 混合检索 + 重排序 =====
+
+def _bm25_keyword_search(query: str, top_k: int = 10) -> list[dict]:
+    """
+    [#9] BM25 风格的关键词检索（简化版）
+    从 ChromaDB 获取全量文档，按关键词匹配度排序
+    作为向量检索的补充，提升关键词精确匹配场景的召回率
+    """
+    vector_store = get_vector_store()
+    try:
+        collection = vector_store._collection
+        # 获取所有文档
+        all_docs = collection.get(include=["documents", "metadatas"])
+        
+        if not all_docs.get("ids"):
+            return []
+
+        query_terms = set(re.findall(r'[\u4e00-\u9fff]+|\w+', query.lower()))
+        # 过滤停用词
+        stopwords = {'的', '了', '是', '在', '和', '与', '有', '什么', '怎么', '如何', '哪些', '这个', '那个', 'a', 'an', 'the', 'is', 'are', 'was', 'were'}
+        query_terms = query_terms - stopwords
+
+        scored = []
+        for i, doc_id in enumerate(all_docs["ids"]):
+            content = all_docs["documents"][i] or ""
+            metadata = all_docs["metadatas"][i] or {}
+            
+            # 计算关键词匹配分
+            content_lower = content.lower()
+            match_count = sum(1 for term in query_terms if term in content_lower)
+            if match_count == 0:
+                continue
+
+            # TF 近似：关键词出现次数 / 文档长度
+            tf_score = match_count / max(len(content), 1) * 1000
+            
+            scored.append({
+                "content": content,
+                "source": metadata.get("source_file", "未知来源"),
+                "chunk_index": metadata.get("chunk_index", -1),
+                "bm25_score": tf_score,
+                "id": doc_id,
+            })
+
+        # 按 BM25 分排序
+        scored.sort(key=lambda x: x["bm25_score"], reverse=True)
+        return scored[:top_k]
+
+    except Exception as e:
+        logger.warning(f"BM25 关键词检索失败: {e}")
+        return []
+
+
+def _reciprocal_rank_fusion(vector_results: list[dict], keyword_results: list[dict], k: int = 60) -> list[dict]:
+    """
+    [#9] 倒数排名融合（Reciprocal Rank Fusion）
+    将向量检索和关键词检索的结果融合，按融合分数排序
+    
+    RRF公式: score = 1/(k + rank_vector) + 1/(k + rank_keyword)
+    """
+    fused_scores = {}
+    
+    # 向量检索结果
+    for rank, item in enumerate(vector_results):
+        content_key = item["content"][:200]  # 用内容前200字作为唯一标识
+        if content_key not in fused_scores:
+            fused_scores[content_key] = {**item, "rrf_score": 0}
+        fused_scores[content_key]["rrf_score"] += 1.0 / (k + rank + 1)
+        # 保留向量相似度
+        if "relevance_score" not in fused_scores[content_key]:
+            fused_scores[content_key]["relevance_score"] = item.get("relevance_score", 0)
+    
+    # 关键词检索结果
+    for rank, item in enumerate(keyword_results):
+        content_key = item["content"][:200]
+        if content_key not in fused_scores:
+            fused_scores[content_key] = {
+                "content": item["content"],
+                "source": item.get("source", "未知来源"),
+                "chunk_index": item.get("chunk_index", -1),
+                "relevance_score": 0,
+                "rrf_score": 0,
+            }
+        fused_scores[content_key]["rrf_score"] += 1.0 / (k + rank + 1)
+        # 如果有 BM25 分，补充
+        if "bm25_score" in item and "bm25_score" not in fused_scores[content_key]:
+            fused_scores[content_key]["bm25_score"] = item["bm25_score"]
+    
+    # 按 RRF 分排序
+    results = sorted(fused_scores.values(), key=lambda x: x["rrf_score"], reverse=True)
+    return results
+
+
 def search_documents(query: str, top_k: int = 3) -> list[dict]:
     """
-    在向量数据库中检索与查询最相关的文档片段
+    [#9] 混合检索：向量语义检索 + BM25关键词检索 + RRF融合
+    [#10] 引用溯源：返回结果标注文档名 + 段落位置
 
     Args:
         query: 用户查询
@@ -169,15 +272,41 @@ def search_documents(query: str, top_k: int = 3) -> list[dict]:
     Returns:
         list[dict]: 检索结果列表
     """
+    # 1. 向量语义检索
     vector_store = get_vector_store()
-    results = vector_store.similarity_search_with_score(query, k=top_k)
+    try:
+        vector_results_raw = vector_store.similarity_search_with_score(query, k=top_k * 3)  # 多取用于融合
+    except Exception as e:
+        logger.warning(f"向量检索失败，回退到关键词检索: {e}")
+        vector_results_raw = []
 
-    formatted = []
-    for doc, score in results:
-        formatted.append({
+    vector_results = []
+    for doc, score in vector_results_raw:
+        vector_results.append({
             "content": doc.page_content,
             "source": doc.metadata.get("source_file", "未知来源"),
-            "relevance_score": round(1 - score, 4),  # 转换为相似度
+            "chunk_index": doc.metadata.get("chunk_index", -1),
+            "relevance_score": round(1 - score, 4),
+        })
+
+    # 2. BM25 关键词检索
+    keyword_results = _bm25_keyword_search(query, top_k=top_k * 3)
+
+    # 3. RRF 融合
+    if keyword_results:
+        fused_results = _reciprocal_rank_fusion(vector_results, keyword_results)
+    else:
+        # 关键词检索失败，直接用向量结果
+        fused_results = vector_results
+
+    # 4. 格式化输出（取 top_k）
+    formatted = []
+    for r in fused_results[:top_k]:
+        formatted.append({
+            "content": r["content"],
+            "source": r.get("source", "未知来源"),
+            "chunk_index": r.get("chunk_index", -1),
+            "relevance_score": r.get("relevance_score", round(r.get("rrf_score", 0), 4)),
         })
 
     return formatted

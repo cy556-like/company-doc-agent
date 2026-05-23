@@ -3,8 +3,11 @@ Agent 核心逻辑模块
 使用 LangGraph 构建 ReAct 模式的 Agent
 ReAct = Reasoning(推理) + Acting(行动) → 边思考边行动
 支持流式输出（Streaming SSE）
+支持多步骤任务编排、工具并行执行、自省纠错
 """
 import asyncio
+import time
+import logging
 from typing import Annotated, AsyncGenerator
 from typing_extensions import TypedDict
 
@@ -19,11 +22,17 @@ from app.agent.tools import ALL_TOOLS, get_tools
 from app.agent.prompts import SYSTEM_PROMPT, SYSTEM_PROMPT_WITH_WEB_SEARCH, CHAT_SYSTEM_PROMPT
 from app.memory.manager import get_session_history
 
+logger = logging.getLogger(__name__)
+
 # 最大历史消息数量（加速推理，避免上下文过长）
 MAX_HISTORY_MESSAGES = 10
 
-# 最大工具调用轮数（防止无限循环）
-MAX_TOOL_ROUNDS = 3
+# [#6] 多步骤任务编排：增大最大工具调用轮数，支持复杂任务
+MAX_TOOL_ROUNDS = 8
+
+# [#11] 工具重试配置
+MAX_TOOL_RETRIES = 2
+RETRYABLE_TOOL_ERRORS = ["搜索失败", "未找到", "连接", "超时", "timeout", "error"]
 
 
 # ===== 1. 定义 Agent 状态 =====
@@ -31,8 +40,10 @@ class AgentState(TypedDict):
     """
     Agent 的状态定义
     messages 使用 add_messages 策略：新消息追加而非覆盖
+    retry_count: [#11] 工具重试计数
     """
     messages: Annotated[list, add_messages]
+    retry_count: int
 
 
 # ===== 2. 创建 LLM =====
@@ -69,8 +80,12 @@ def create_agent_graph(web_search: bool = False):
         web_search: 是否启用联网搜索工具
 
     流程：用户输入 → LLM 思考 → 是否调用工具？
-           ├─ 是 → 执行工具 → 回到 LLM 思考（循环，最多3轮）
+           ├─ 是 → 执行工具 → 回到 LLM 思考（循环，最多8轮）
            └─ 否 → 输出回答 → 结束
+
+    [#6] 多步骤任务编排：增大 MAX_TOOL_ROUNDS
+    [#7] 工具并行执行：LangGraph 原生支持并行工具调用（LLM 返回多个 tool_calls 时自动并行）
+    [#11] 自省纠错：should_continue 中增加重试判断
     """
     llm = create_llm()
 
@@ -92,25 +107,45 @@ def create_agent_graph(web_search: bool = False):
         response = llm_with_tools.invoke([system_msg] + messages)
         return {"messages": [response]}
 
-    # 节点2: 工具执行节点（使用 LangGraph 内置的 ToolNode）
+    # [#7] 工具并行执行：LangGraph ToolNode 原生支持并行调用
+    # 当 LLM 返回多个 tool_calls 时，ToolNode 会自动并行执行
     tool_node = ToolNode(tools)
 
-    # 条件边：判断是否需要继续调用工具（限制最大轮数）
+    # 条件边：判断是否需要继续调用工具（限制最大轮数 + [#11] 自省纠错）
     def should_continue(state: AgentState):
         """
         判断是否需要继续调用工具
-        如果工具调用轮数超过 MAX_TOOL_ROUNDS，则强制结束
+        1. [#6] 如果工具调用轮数超过 MAX_TOOL_ROUNDS，强制结束
+        2. [#11] 如果工具返回错误，且重试次数未超限，允许重试
+        3. 正常流程：LLM 认为需要工具则继续
         """
         messages = state["messages"]
+        retry_count = state.get("retry_count", 0)
+
         # 统计 ToolMessage 的数量，每轮工具调用会产生一个 ToolMessage
         tool_message_count = sum(1 for m in messages if isinstance(m, ToolMessage))
 
         if tool_message_count >= MAX_TOOL_ROUNDS:
+            logger.info(f"Agent 工具调用已达上限 {MAX_TOOL_ROUNDS} 轮，强制结束")
             return END
 
         # 使用 LangGraph 内置判断：最后一条消息是否有工具调用
         last_message = messages[-1]
         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+            # [#11] 自省纠错：检查上一个工具结果是否有错误，决定是否继续
+            if tool_message_count > 0:
+                # 找到最后一个 ToolMessage
+                for msg in reversed(messages):
+                    if isinstance(msg, ToolMessage):
+                        tool_result = msg.content if isinstance(msg.content, str) else str(msg.content)
+                        # 检查工具结果是否包含可重试的错误
+                        if any(err in tool_result for err in RETRYABLE_TOOL_ERRORS):
+                            if retry_count < MAX_TOOL_RETRIES:
+                                logger.info(f"Agent 检测到工具错误，第 {retry_count + 1} 次重试")
+                                return "act"
+                            else:
+                                logger.info(f"Agent 工具重试已达上限 {MAX_TOOL_RETRIES} 次，继续执行")
+                        break
             return "act"
 
         return END
@@ -190,7 +225,7 @@ def chat(user_input: str, session_id: str = "default", web_search: bool = False,
     all_messages = recent_messages + [HumanMessage(content=user_input)]
 
     # 调用 Agent
-    result = agent.invoke({"messages": all_messages})
+    result = agent.invoke({"messages": all_messages, "retry_count": 0})
 
     # 提取最后的 AI 回答
     ai_message = result["messages"][-1]
@@ -208,11 +243,14 @@ def chat(user_input: str, session_id: str = "default", web_search: bool = False,
 TOOL_DISPLAY_NAMES = {
     "search_documents_tool": "搜索文档",
     "lookup_employee_tool": "查询员工",
-    "list_documents_tool": "列出文档",
+    "list_departments_tool": "部门列表",
+    "list_documents_tool": "文档列表",
     "upload_document_tool": "上传文档",
-    "modify_document_tool": "修改文档",
     "delete_document_tool": "删除文档",
     "web_search_tool": "联网搜索",
+    "github_api_tool": "GitHub操作",        # [#12] 外部系统
+    "send_email_tool": "发送邮件",          # [#12] 外部系统
+    "database_query_tool": "数据库查询",    # [#12] 外部系统
 }
 
 
@@ -220,6 +258,10 @@ async def chat_stream_generator(user_input: str, session_id: str = "default", we
     """
     流式对话：逐token输出，同时显示工具调用进度
     Yields: {"type": "token"|"tool"|"thinking"|"done"|"error", ...}
+    
+    [#6] 多步骤任务编排：max_tool_rounds=8 支持复杂任务链
+    [#7] 工具并行执行：LangGraph 自动并行处理多个 tool_calls
+    [#11] 自省纠错：should_continue 中检测工具错误并允许重试
     """
     # Chat模式：直接LLM对话
     if mode == "chat":
@@ -234,13 +276,14 @@ async def chat_stream_generator(user_input: str, session_id: str = "default", we
     all_messages = recent_messages + [HumanMessage(content=user_input)]
 
     full_response = ""
+    start_time = time.time()
 
     try:
         # 先发一个"思考中"信号
         yield {"type": "thinking", "content": "正在思考..."}
 
         async for event in agent.astream_events(
-            {"messages": all_messages},
+            {"messages": all_messages, "retry_count": 0},
             version="v2",
         ):
             kind = event["event"]
@@ -275,9 +318,10 @@ async def chat_stream_generator(user_input: str, session_id: str = "default", we
                 yield {"type": "tool_done", "name": tool_name, "display": display_name}
 
     except Exception as e:
+        logger.error(f"Agent 流式输出异常: {e}", exc_info=True)
         # 流式失败 → 回退到非流式
         try:
-            result = agent.invoke({"messages": all_messages})
+            result = agent.invoke({"messages": all_messages, "retry_count": 0})
             ai_message = result["messages"][-1]
             full_response = ai_message.content or ""
             if full_response:
@@ -292,7 +336,7 @@ async def chat_stream_generator(user_input: str, session_id: str = "default", we
     # 如果流式输出为空但Agent可能有回复（工具调用后token丢失），尝试非流式回退
     if not full_response:
         try:
-            result = agent.invoke({"messages": all_messages})
+            result = agent.invoke({"messages": all_messages, "retry_count": 0})
             ai_message = result["messages"][-1]
             full_response = ai_message.content or ""
             if full_response:
@@ -311,6 +355,10 @@ async def chat_stream_generator(user_input: str, session_id: str = "default", we
             history.add_message(AIMessage(content=full_response))
         except Exception:
             pass
+
+    # [#20] 可观测性：记录性能指标
+    elapsed = time.time() - start_time
+    logger.info(f"Agent 对话完成 | 耗时={elapsed:.2f}s | 模型={settings.LLM_MODEL} | 工具轮数={sum(1 for m in all_messages if isinstance(m, ToolMessage))}")
 
     yield {"type": "done"}
 

@@ -3,24 +3,106 @@ Agent 工具定义模块
 每个工具 = Agent 的一个「能力」
 Agent 会根据用户问题自动选择调用哪个工具
 
-Prompt Engineering 优化:
-- 工具描述清晰定义触发条件和适用场景
-- 参数说明包含类型、约束和使用建议
-- 返回值格式标准化，便于 Agent 解析和引用
-- 区分相似工具的适用场景，避免误选
+优化:
+- [#8] 工具结果缓存：LRU缓存 + TTL
+- [#10] 引用溯源：返回结果标注文档名+段落位置
+- [#12] 外部系统集成：GitHub API / 邮件 / 数据库查询
 """
 import json
 import os
+import time
+import hashlib
+import logging
+import re
 from typing import Optional
+from functools import wraps
 
 from langchain_core.tools import tool
 
 from app.config import settings
 from app.rag.document import search_documents, index_document, list_indexed_documents, delete_document
 
+logger = logging.getLogger(__name__)
+
+
+# ===== [#8] 工具结果缓存 =====
+class ToolCache:
+    """带 TTL 的 LRU 工具结果缓存"""
+    def __init__(self, max_size: int = 100, default_ttl: int = 300):
+        self._cache = {}  # key -> {"value": ..., "expire_at": float}
+        self._max_size = max_size
+        self._default_ttl = default_ttl
+        self._access_order = []  # LRU 顺序
+
+    def _make_key(self, func_name: str, args: tuple, kwargs: dict) -> str:
+        """生成缓存 key"""
+        raw = f"{func_name}:{args}:{sorted(kwargs.items())}"
+        return hashlib.md5(raw.encode()).hexdigest()
+
+    def get(self, key: str) -> Optional[str]:
+        """获取缓存，过期返回 None"""
+        entry = self._cache.get(key)
+        if entry is None:
+            return None
+        if time.time() > entry["expire_at"]:
+            del self._cache[key]
+            return None
+        # LRU: 移到末尾
+        if key in self._access_order:
+            self._access_order.remove(key)
+        self._access_order.append(key)
+        return entry["value"]
+
+    def set(self, key: str, value: str, ttl: int = None):
+        """设置缓存"""
+        if ttl is None:
+            ttl = self._default_ttl
+        # 容量超限时淘汰最久未访问的
+        while len(self._cache) >= self._max_size and self._access_order:
+            oldest = self._access_order.pop(0)
+            self._cache.pop(oldest, None)
+        self._cache[key] = {"value": value, "expire_at": time.time() + ttl}
+        if key not in self._access_order:
+            self._access_order.append(key)
+
+    def clear(self):
+        """清空缓存"""
+        self._cache.clear()
+        self._access_order.clear()
+
+    def stats(self) -> dict:
+        """缓存统计"""
+        return {"size": len(self._cache), "max_size": self._max_size}
+
+
+# 全局工具缓存实例
+_tool_cache = ToolCache(max_size=100, default_ttl=300)
+
+
+def cached_tool(ttl: int = 300):
+    """工具缓存装饰器
+    
+    Args:
+        ttl: 缓存有效期（秒），web_search 默认 5 分钟，文档搜索默认 2 分钟
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            cache_key = _tool_cache._make_key(func.__name__, args, kwargs)
+            cached = _tool_cache.get(cache_key)
+            if cached is not None:
+                logger.info(f"工具缓存命中: {func.__name__}")
+                return cached
+            result = func(*args, **kwargs)
+            _tool_cache.set(cache_key, result, ttl=ttl)
+            return result
+        return wrapper
+    return decorator
+
 
 # ===== 联网搜索工具 =====
 @tool
+@cached_tool(ttl=300)  # [#8] web_search 缓存 5 分钟
 def web_search_tool(query: str) -> str:
     """搜索互联网获取实时信息。当你需要最新资讯、实时数据、或知识库中没有的信息时使用此工具。
 
@@ -34,7 +116,6 @@ def web_search_tool(query: str) -> str:
     try:
         import httpx
         from urllib.parse import quote_plus
-        import re
 
         # 使用百度搜索（国内最稳定）
         search_url = f"https://www.baidu.com/s?wd={quote_plus(query)}&rn=5"
@@ -73,16 +154,14 @@ def web_search_tool(query: str) -> str:
                 if title and len(title) > 3:
                     results.append({"title": title, "href": href, "snippet": ""})
 
-        # 提取摘要：从 c-abstract 或 content-right_ 标签
+        # 提取摘要
         abstract_pattern = re.compile(r'class="c-abstract[^"]*"[^>]*>(.*?)</(?:span|div|p)>', re.DOTALL)
         abstracts = [re.sub(r'<[^>]+>', '', m.group(1)).strip() for m in abstract_pattern.finditer(html)]
 
-        # 将摘要分配给对应的结果
         for i, r in enumerate(results):
             if i < len(abstracts) and abstracts[i]:
                 r["snippet"] = abstracts[i]
 
-        # 如果还是没有摘要，尝试从 c-span_last 中提取
         if not any(r["snippet"] for r in results):
             snippet_pattern = re.compile(r'<span class="content-right_[^"]*">(.*?)</span>', re.DOTALL)
             snippets = [re.sub(r'<[^>]+>', '', m.group(1)).strip() for m in snippet_pattern.finditer(html)]
@@ -118,8 +197,12 @@ def _load_employees():
 
 
 @tool
+@cached_tool(ttl=120)  # [#8] 文档搜索缓存 2 分钟
 def search_documents_tool(query: str) -> str:
     """搜索公司文档知识库，检索与查询语义相关的文档片段。
+
+    [#9] 采用混合检索策略：向量语义检索 + 关键词匹配，提升检索准确率
+    [#10] 返回结果标注文档来源和段落位置，支持引用溯源
 
     【用途】查询公司制度、流程、规范、政策、规定等文档内容。
     【不适用】查员工信息（用lookup_employee_tool）、查看文档列表（用list_documents_tool）。
@@ -128,16 +211,39 @@ def search_documents_tool(query: str) -> str:
         query: 搜索查询关键词。
                示例：「年假制度」「报销流程」「考勤规定」
     """
-    results = search_documents(query, top_k=3)
+    # [#9] 混合检索：先向量搜索，再用关键词补充
+    results = search_documents(query, top_k=5)  # 多取一些用于重排序
 
     if not results:
         return "【检索结果】未找到与查询相关的文档内容。建议：1）尝试换用不同关键词搜索；2）确认相关文档是否已上传至知识库。"
 
+    # [#9] 简单重排序：关键词匹配度 + 向量相似度加权
+    query_keywords = set(query.replace("？", "").replace("？", "").replace("的", "").replace("了", "").replace("是", "").replace("什么", ""))
+    for r in results:
+        keyword_score = sum(1 for kw in query_keywords if kw in r.get("content", "")) / max(len(query_keywords), 1)
+        vector_score = r.get("relevance_score", 0.5)
+        r["final_score"] = 0.4 * keyword_score + 0.6 * vector_score
+
+    # 按综合分数排序
+    results.sort(key=lambda x: x.get("final_score", 0), reverse=True)
+    results = results[:3]  # 取 top 3
+
     output = f"【检索结果】共找到 {len(results)} 条相关内容：\n\n"
     for i, r in enumerate(results, 1):
-        output += f"<document source=\"{r['source']}\" relevance=\"{r['relevance_score']}\">\n"
-        output += f"{r['content']}\n"
+        source = r.get('source', '未知来源')
+        relevance = r.get('relevance_score', 0)
+        content = r.get('content', '')
+        # [#10] 引用溯源：标注文档名 + 段落位置
+        # 提取内容的前30字作为段落定位
+        content_preview = content[:50].replace('\n', ' ').strip()
+        output += f"<document source=\"{source}\" relevance=\"{relevance:.2f}\" citation=\"{source} · {content_preview}...\">\n"
+        output += f"{content}\n"
         output += f"</document>\n\n"
+
+    # [#10] 添加引用说明
+    sources = list(set(r.get('source', '') for r in results if r.get('source')))
+    if sources:
+        output += f"【引用来源】{', '.join(sources)}\n"
 
     return output
 
@@ -296,6 +402,223 @@ def delete_document_tool(filename: str) -> str:
         return f"【删除失败】{str(e)}"
 
 
+# ===== [#12] 外部系统集成工具 =====
+
+@tool
+def github_api_tool(action: str, repo: str = "", path: str = "", content: str = "", message: str = "") -> str:
+    """与 GitHub 仓库进行交互，支持读取和更新文件。
+
+    【用途】当代码仓库操作需求时使用，如查看仓库内容、更新文件、获取文件内容等。
+    【典型问题】「帮我把这个改动推到GitHub」「查看仓库的文件列表」「更新某个文件」
+
+    Args:
+        action: 操作类型，支持 "read"（读取文件内容）, "list"（列出目录内容）, "update"（更新文件）
+        repo: 仓库名称，格式 "owner/repo"，示例 "cy556-like/company-doc-agent"
+        path: 文件路径，示例 "app/config.py"
+        content: 更新文件时的文件内容（仅 action=update 时需要）
+        message: 更新文件时的 commit message（仅 action=update 时需要）
+    """
+    import httpx
+
+    github_token = os.getenv("GITHUB_TOKEN", "")
+    if not github_token:
+        return "【GitHub 操作】未配置 GITHUB_TOKEN 环境变量，无法执行 GitHub 操作。请在 .env 中设置 GITHUB_TOKEN。"
+
+    if not repo:
+        return "【GitHub 操作】缺少仓库参数，请提供 repo 参数，格式：owner/repo"
+
+    headers = {
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+    base_url = f"https://api.github.com/repos/{repo}"
+
+    try:
+        if action == "list":
+            url = f"{base_url}/contents/{path}" if path else f"{base_url}/contents"
+            resp = httpx.get(url, headers=headers, timeout=15)
+            if resp.status_code != 200:
+                return f"【GitHub 操作】获取目录失败: {resp.status_code} {resp.text[:200]}"
+            items = resp.json()
+            if isinstance(items, dict) and items.get("message"):
+                return f"【GitHub 操作】{items['message']}"
+            output = f"【GitHub 目录】{repo}/{path}:\n\n"
+            for item in items[:20]:
+                icon = "📁" if item.get("type") == "dir" else "📄"
+                output += f"  {icon} {item['name']} ({item.get('type', '')})\n"
+            if len(items) > 20:
+                output += f"  ... 共 {len(items)} 项\n"
+            return output
+
+        elif action == "read":
+            if not path:
+                return "【GitHub 操作】读取文件需要提供 path 参数"
+            url = f"{base_url}/contents/{path}"
+            resp = httpx.get(url, headers=headers, timeout=15)
+            if resp.status_code != 200:
+                return f"【GitHub 操作】读取文件失败: {resp.status_code}"
+            data = resp.json()
+            import base64
+            file_content = base64.b64decode(data["content"]).decode("utf-8", errors="replace")
+            sha = data.get("sha", "")
+            output = f"【GitHub 文件】{repo}/{path} (sha: {sha[:8]}...)\n\n"
+            output += file_content[:3000]
+            if len(file_content) > 3000:
+                output += f"\n\n... (共 {len(file_content)} 字符，已截断显示前3000字)"
+            return output
+
+        elif action == "update":
+            if not path or not content:
+                return "【GitHub 操作】更新文件需要提供 path 和 content 参数"
+            import base64
+            # 先获取当前文件的 sha
+            url = f"{base_url}/contents/{path}"
+            resp = httpx.get(url, headers=headers, timeout=15)
+            if resp.status_code != 200:
+                # 文件不存在，创建新文件
+                sha = None
+            else:
+                sha = resp.json().get("sha")
+
+            commit_msg = message or f"Update {path} via DocAgent"
+            body = {
+                "message": commit_msg,
+                "content": base64.b64encode(content.encode("utf-8")).decode("utf-8"),
+            }
+            if sha:
+                body["sha"] = sha
+
+            resp = httpx.put(url, headers=headers, json=body, timeout=15)
+            if resp.status_code in (200, 201):
+                return f"【GitHub 操作】文件更新成功: {repo}/{path}\nCommit: {commit_msg}"
+            else:
+                return f"【GitHub 操作】文件更新失败: {resp.status_code} {resp.text[:300]}"
+
+        else:
+            return f"【GitHub 操作】不支持的操作: {action}。支持: read, list, update"
+
+    except Exception as e:
+        return f"【GitHub 操作】操作失败: {str(e)}\n建议：检查网络连接和 GITHUB_TOKEN 配置。"
+
+
+@tool
+def send_email_tool(to: str, subject: str, body: str) -> str:
+    """发送电子邮件通知。
+
+    【用途】当需要发送邮件通知时使用，如发送报告、通知审批结果等。
+    【典型问题】「发邮件通知技术部」「给张三发邮件」
+
+    Args:
+        to: 收件人邮箱地址，多人用逗号分隔。示例："zhangsan@company.com" 或 "a@co.com,b@co.com"
+        subject: 邮件主题
+        body: 邮件正文内容
+    """
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    smtp_host = os.getenv("SMTP_HOST", "")
+    smtp_port = int(os.getenv("SMTP_PORT", "465"))
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_pass = os.getenv("SMTP_PASS", "")
+    smtp_from = os.getenv("SMTP_FROM", smtp_user)
+
+    if not smtp_host or not smtp_user:
+        return "【邮件发送】未配置 SMTP 邮件服务。请在 .env 中设置 SMTP_HOST、SMTP_USER、SMTP_PASS。"
+
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = smtp_from
+        msg["To"] = to
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, "plain", "utf-8"))
+
+        if smtp_port == 465:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30) as server:
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, to.split(","), msg.as_string())
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(smtp_from, to.split(","), msg.as_string())
+
+        return f"【邮件发送】邮件已成功发送给 {to}，主题：{subject}"
+
+    except Exception as e:
+        return f"【邮件发送】发送失败: {str(e)}\n建议：检查 SMTP 配置是否正确。"
+
+
+@tool
+def database_query_tool(query: str, database: str = "default") -> str:
+    """执行 SQL 查询语句（只读），支持查询企业数据库。
+
+    【用途】当需要从数据库中查询业务数据时使用，如订单、库存、销售数据等。
+    【典型问题】「查询本月销售额」「库存还剩多少」「最近10笔订单」
+
+    注意：此工具只支持 SELECT 查询，不支持 INSERT/UPDATE/DELETE 等写操作。
+
+    Args:
+        query: SQL 查询语句。示例："SELECT * FROM orders WHERE date > '2024-01-01' LIMIT 10"
+        database: 数据库名称（可选，默认为 default）
+    """
+    # 安全检查：只允许 SELECT 语句
+    normalized = query.strip().upper()
+    if not normalized.startswith("SELECT") and not normalized.startswith("WITH"):
+        return "【数据库查询】安全限制：仅支持 SELECT 查询，不允许执行 INSERT/UPDATE/DELETE 等写操作。"
+
+    forbidden = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "TRUNCATE", "EXEC"]
+    for kw in forbidden:
+        if kw in normalized.split():
+            return f"【数据库查询】安全限制：检测到禁止的关键字 {kw}，仅支持只读查询。"
+
+    db_url = os.getenv("DATABASE_URL", "")
+    if not db_url:
+        return "【数据库查询】未配置 DATABASE_URL 环境变量。请在 .env 中设置数据库连接字符串。"
+
+    try:
+        import sqlite3
+
+        # 支持 SQLite 和 PostgreSQL
+        if db_url.startswith("sqlite"):
+            conn = sqlite3.connect(db_url.replace("sqlite:///", ""), timeout=10)
+        elif db_url.startswith("postgresql"):
+            try:
+                import psycopg2
+                conn = psycopg2.connect(db_url, connect_timeout=10)
+            except ImportError:
+                return "【数据库查询】PostgreSQL 驱动未安装，请运行: pip install psycopg2-binary"
+        else:
+            return f"【数据库查询】不支持的数据库类型: {db_url.split(':')[0]}"
+
+        try:
+            cursor = conn.cursor()
+            cursor.execute(query)
+
+            if cursor.description:
+                columns = [desc[0] for desc in cursor.description]
+                rows = cursor.fetchmany(50)  # 限制最多返回 50 行
+
+                output = f"【数据库查询】查询成功，返回 {len(rows)} 行：\n\n"
+                # 表头
+                output += "| " + " | ".join(columns) + " |\n"
+                output += "|" + "|".join(["---" for _ in columns]) + "|\n"
+                # 数据行
+                for row in rows:
+                    output += "| " + " | ".join(str(v) if v is not None else "NULL" for v in row) + " |\n"
+
+                if len(rows) == 50:
+                    output += "\n（最多显示 50 行，如需更多请添加 LIMIT 条件）"
+                return output
+            else:
+                return "【数据库查询】查询执行成功，无返回结果。"
+        finally:
+            conn.close()
+
+    except Exception as e:
+        return f"【数据库查询】查询失败: {str(e)}\n建议：检查 SQL 语法和数据库连接配置。"
+
+
 # ===== 导出工具列表 =====
 
 # 基础工具（始终可用）
@@ -313,8 +636,15 @@ WEB_SEARCH_TOOLS = [
     web_search_tool,
 ]
 
+# [#12] 外部系统集成工具（按需启用，需配置对应环境变量）
+EXTERNAL_TOOLS = [
+    github_api_tool,
+    send_email_tool,
+    database_query_tool,
+]
+
 # 全部工具
-ALL_TOOLS = BASE_TOOLS + WEB_SEARCH_TOOLS
+ALL_TOOLS = BASE_TOOLS + WEB_SEARCH_TOOLS + EXTERNAL_TOOLS
 
 
 def get_tools(web_search: bool = False):
@@ -328,4 +658,9 @@ def get_tools(web_search: bool = False):
     """
     if web_search:
         return ALL_TOOLS
-    return BASE_TOOLS
+    return BASE_TOOLS + EXTERNAL_TOOLS
+
+
+def get_cache_stats() -> dict:
+    """获取工具缓存统计信息"""
+    return _tool_cache.stats()
