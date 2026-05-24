@@ -405,7 +405,7 @@ def delete_document_tool(filename: str) -> str:
 # ===== [#12] 外部系统集成工具 =====
 
 @tool
-def github_api_tool(action: str, repo: str = "", path: str = "", content: str = "", message: str = "") -> str:
+def github_api_tool(action: str, repo: str = "", path: str = "", content: str = "", message: str = "", token: str = "") -> str:
     """与 GitHub 仓库进行交互，支持读取和更新文件。
 
     【用途】当代码仓库操作需求时使用，如查看仓库内容、更新文件、获取文件内容等。
@@ -417,10 +417,12 @@ def github_api_tool(action: str, repo: str = "", path: str = "", content: str = 
         path: 文件路径，示例 "app/config.py"
         content: 更新文件时的文件内容（仅 action=update 时需要）
         message: 更新文件时的 commit message（仅 action=update 时需要）
+        token: GitHub Personal Access Token（可选）。用户在对话中提供时可传入，用于写操作鉴权。未提供时从环境变量 GITHUB_TOKEN 读取。
     """
     import httpx
 
-    github_token = os.getenv("GITHUB_TOKEN", "")
+    # Token 优先级：对话中传入 > 环境变量
+    github_token = token or os.getenv("GITHUB_TOKEN", "")
     if not repo:
         return "【GitHub 操作】缺少仓库参数，请提供 repo 参数，格式：owner/repo"
 
@@ -433,7 +435,7 @@ def github_api_tool(action: str, repo: str = "", path: str = "", content: str = 
 
     # 写操作（update）必须需要 Token
     if action == "update" and not github_token:
-        return "【GitHub 操作】写入操作需要配置 GITHUB_TOKEN 环境变量。读取公开仓库不需要 Token。请在 .env 中设置 GITHUB_TOKEN。"
+        return "【GitHub 操作】写入操作需要 Token 鉴权。请在对话中提供 Token，或在 .env 中设置 GITHUB_TOKEN。读取公开仓库不需要 Token。"
     base_url = f"https://api.github.com/repos/{repo}"
 
     try:
