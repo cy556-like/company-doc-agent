@@ -46,7 +46,7 @@ class Settings:
     # LLM 配置
     LLM_API_KEY: str = os.getenv("LLM_API_KEY", "")
     LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "glm-4-flash")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "glm-5.1")
 
     # Embedding 模型
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "embedding-3")
