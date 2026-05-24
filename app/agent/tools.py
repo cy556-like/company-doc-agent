@@ -421,16 +421,19 @@ def github_api_tool(action: str, repo: str = "", path: str = "", content: str = 
     import httpx
 
     github_token = os.getenv("GITHUB_TOKEN", "")
-    if not github_token:
-        return "【GitHub 操作】未配置 GITHUB_TOKEN 环境变量，无法执行 GitHub 操作。请在 .env 中设置 GITHUB_TOKEN。"
-
     if not repo:
         return "【GitHub 操作】缺少仓库参数，请提供 repo 参数，格式：owner/repo"
 
+    # 构建请求头：公开仓库的 read/list 不需要 Token，update 操作需要 Token
     headers = {
-        "Authorization": f"token {github_token}",
         "Accept": "application/vnd.github.v3+json",
     }
+    if github_token:
+        headers["Authorization"] = f"token {github_token}"
+
+    # 写操作（update）必须需要 Token
+    if action == "update" and not github_token:
+        return "【GitHub 操作】写入操作需要配置 GITHUB_TOKEN 环境变量。读取公开仓库不需要 Token。请在 .env 中设置 GITHUB_TOKEN。"
     base_url = f"https://api.github.com/repos/{repo}"
 
     try:
@@ -498,7 +501,7 @@ def github_api_tool(action: str, repo: str = "", path: str = "", content: str = 
             return f"【GitHub 操作】不支持的操作: {action}。支持: read, list, update"
 
     except Exception as e:
-        return f"【GitHub 操作】操作失败: {str(e)}\n建议：检查网络连接和 GITHUB_TOKEN 配置。"
+        return f"【GitHub 操作】操作失败: {str(e)}\n提示：读取公开仓库不需要 Token，写入操作才需要配置 GITHUB_TOKEN。"
 
 
 @tool
