@@ -412,7 +412,7 @@ def github_api_tool(action: str, repo: str = "", path: str = "", content: str = 
     【典型问题】「帮我把这个改动推到GitHub」「查看仓库的文件列表」「更新某个文件」
 
     Args:
-        action: 操作类型，支持 "read"（读取文件内容）, "list"（列出目录内容）, "update"（更新文件）
+        action: 操作类型，支持 "read"（读取文件，大文件截断8000字）, "read_full"（读取完整文件，不截断）, "list"（列出目录内容）, "update"（更新文件）
         repo: 仓库名称，格式 "owner/repo"，示例 "cy556-like/company-doc-agent"
         path: 文件路径，示例 "app/config.py"
         content: 更新文件时的文件内容（仅 action=update 时需要）
@@ -455,21 +455,58 @@ def github_api_tool(action: str, repo: str = "", path: str = "", content: str = 
                 output += f"  ... 共 {len(items)} 项\n"
             return output
 
-        elif action == "read":
+        elif action in ("read", "read_full"):
             if not path:
                 return "【GitHub 操作】读取文件需要提供 path 参数"
+
+            # 对于大文件，使用 GitHub Blob API 避免内容截断
+            # GitHub Contents API 对大文件会返回 403 且 base64 有大小限制
+            # Blob API 可获取任意大小的文件完整内容
+            import base64
+            file_content = ""
+            sha = ""
+
+            # 先尝试 Contents API（小文件快速获取）
             url = f"{base_url}/contents/{path}"
             resp = httpx.get(url, headers=headers, timeout=15)
-            if resp.status_code != 200:
-                return f"【GitHub 操作】读取文件失败: {resp.status_code}"
-            data = resp.json()
-            import base64
-            file_content = base64.b64decode(data["content"]).decode("utf-8", errors="replace")
-            sha = data.get("sha", "")
-            output = f"【GitHub 文件】{repo}/{path} (sha: {sha[:8]}...)\n\n"
-            output += file_content[:3000]
-            if len(file_content) > 3000:
-                output += f"\n\n... (共 {len(file_content)} 字符，已截断显示前3000字)"
+            if resp.status_code == 200:
+                data = resp.json()
+                sha = data.get("sha", "")
+                file_size = data.get("size", 0)
+                # 如果文件较大（>100KB），用 Blob API 获取完整内容
+                if file_size > 100000:
+                    blob_sha = data.get("sha", "")
+                    blob_url = f"{base_url}/git/blobs/{blob_sha}"
+                    blob_resp = httpx.get(blob_url, headers=headers, timeout=30)
+                    if blob_resp.status_code == 200:
+                        blob_data = blob_resp.json()
+                        file_content = base64.b64decode(blob_data["content"]).decode("utf-8", errors="replace")
+                    else:
+                        # Blob API 也失败，用 Contents API 尽量获取
+                        file_content = base64.b64decode(data["content"]).decode("utf-8", errors="replace")
+                else:
+                    file_content = base64.b64decode(data["content"]).decode("utf-8", errors="replace")
+            elif resp.status_code == 403:
+                # Contents API 对大文件返回 403，使用 Raw URL 直接获取文件内容
+                raw_url = f"https://raw.githubusercontent.com/{repo}/main/{path}"
+                raw_resp = httpx.get(raw_url, headers={"User-Agent": "DocAgent/1.0"}, timeout=30)
+                if raw_resp.status_code == 200:
+                    file_content = raw_resp.text
+                else:
+                    return f"【GitHub 操作】读取文件失败: Contents API 403, Raw URL {raw_resp.status_code}"
+            else:
+                return f"【GitHub 操作】读取文件失败: {resp.status_code} {resp.text[:200]}"
+
+            output = f"【GitHub 文件】{repo}/{path} (sha: {sha[:8] if sha else 'unknown'}..., 共 {len(file_content)} 字符)\n\n"
+
+            # action="read" 时限制返回长度（避免工具输出过长拖慢 Agent），
+            # action="read_full" 时返回完整内容
+            if action == "read" and len(file_content) > 8000:
+                output += file_content[:8000]
+                output += f"\n\n... (文件共 {len(file_content)} 字符，已显示前8000字。如需完整内容请使用 action=read_full)"
+            else:
+                output += file_content
+
             return output
 
         elif action == "update":
@@ -500,7 +537,7 @@ def github_api_tool(action: str, repo: str = "", path: str = "", content: str = 
                 return f"【GitHub 操作】文件更新失败: {resp.status_code} {resp.text[:300]}"
 
         else:
-            return f"【GitHub 操作】不支持的操作: {action}。支持: read, list, update"
+            return f"【GitHub 操作】不支持的操作: {action}。支持: read, read_full, list, update"
 
     except Exception as e:
         return f"【GitHub 操作】操作失败: {str(e)}\n提示：读取公开仓库不需要 Token，写入操作才需要配置 GITHUB_TOKEN。"
