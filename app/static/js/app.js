@@ -9,7 +9,8 @@ let selectedFile = null;
 let selectedFileBase64 = null;
 let isLoading = false;
 let currentChatId = null;
-let allChats = [];
+let allChats = [];       // 当前模式下的对话列表
+let chatModeChatIds = { chat: null, agent: null };  // 每个模式最后打开的chatId
 let renamingChatId = null;
 let currentAbortController = null;
 let userScrolledUp = false;
@@ -62,6 +63,11 @@ function toggleWebSearch() {
 
 // ===== Mode Switch =====
 function switchMode(mode) {
+    // 保存当前模式的 chatId
+    if (currentChatId) {
+        chatModeChatIds[currentMode] = currentChatId;
+    }
+
     currentMode = mode;
     localStorage.setItem('chatMode', mode);
 
@@ -92,6 +98,11 @@ function switchMode(mode) {
             ? '智能驱动，高效协同。随时为您解答疑问、处理事务，让工作更简单。'
             : '通用对话模式，深度思考更精准。随时为您解答各类问题。';
     }
+
+    // 切换模式时重新加载对应模式的对话列表
+    currentChatId = null;
+    clearChatUI();
+    loadChatList();
 }
 
 (function initMode() {
@@ -284,7 +295,7 @@ async function doRegister() {
 }
 
 function doLogout() {
-    currentUser = null; authToken = null; selectedFile = null; currentChatId = null; allChats = [];
+    currentUser = null; authToken = null; selectedFile = null; currentChatId = null; allChats = []; chatModeChatIds = { chat: null, agent: null };
     localStorage.removeItem('authToken');
     document.getElementById('chatPage').style.display = 'none';
     document.getElementById('loginPage').style.display = 'flex';
@@ -328,7 +339,7 @@ function updateCenteredMode() {
 async function loadChatList() {
     if (!currentUser) return;
     try {
-        const resp = await fetch(`/api/v1/chats?username=${encodeURIComponent(currentUser)}`, { headers: apiHeaders() });
+        const resp = await fetch(`/api/v1/chats?username=${encodeURIComponent(currentUser)}&mode=${currentMode}`, { headers: apiHeaders() });
         const data = await resp.json();
         if (data.success) {
             allChats = data.chats;
@@ -336,7 +347,15 @@ async function loadChatList() {
             if (allChats.length === 0) {
                 await createNewChat();
             } else if (!currentChatId) {
-                switchChat(allChats[0].chat_id);
+                // 优先恢复上次在该模式下的 chatId
+                const savedId = chatModeChatIds[currentMode];
+                const target = savedId && allChats.find(c => c.chat_id === savedId) ? savedId : allChats[0].chat_id;
+                switchChat(target);
+            } else {
+                // 确保 currentChatId 属于当前模式
+                if (!allChats.find(c => c.chat_id === currentChatId)) {
+                    switchChat(allChats[0].chat_id);
+                }
             }
         }
     } catch (e) { console.error('加载会话列表失败', e); }
@@ -345,6 +364,8 @@ async function loadChatList() {
 function renderChatList() {
     const list = document.getElementById('chatList');
     list.innerHTML = '';
+    // 根据当前模式显示不同图标
+    const chatIcon = currentMode === 'agent' ? '🤖' : '💬';
     allChats.forEach(chat => {
         const item = document.createElement('div');
         item.className = `chat-item${chat.chat_id === currentChatId ? ' active' : ''}`;
@@ -355,7 +376,7 @@ function renderChatList() {
         };
         const timeStr = formatTime(chat.updated_at || chat.created_at);
         item.innerHTML = `
-            <span class="chat-icon">💬</span>
+            <span class="chat-icon">${chatIcon}</span>
             <span class="chat-title" title="${escapeHtml(chat.title)}">${escapeHtml(chat.title)}</span>
             <span class="chat-time">${timeStr}</span>
             <div class="chat-actions">
@@ -370,10 +391,11 @@ function renderChatList() {
 async function createNewChat() {
     if (!currentUser) return;
     try {
-        const resp = await fetch(`/api/v1/chats?username=${encodeURIComponent(currentUser)}&title=${encodeURIComponent('新对话')}`, { method: 'POST', headers: apiHeaders() });
+        const resp = await fetch(`/api/v1/chats?username=${encodeURIComponent(currentUser)}&title=${encodeURIComponent('新对话')}&mode=${currentMode}`, { method: 'POST', headers: apiHeaders() });
         const data = await resp.json();
         if (data.success) {
             currentChatId = data.chat.chat_id;
+            chatModeChatIds[currentMode] = currentChatId;
             await loadChatList();
             clearChatUI();
             closeSidebarOnMobile();
@@ -384,6 +406,7 @@ async function createNewChat() {
 async function switchChat(chatId) {
     if (chatId === currentChatId) return;
     currentChatId = chatId;
+    chatModeChatIds[currentMode] = chatId;
     renderChatList();
     await loadChatHistory(chatId);
 }
@@ -409,6 +432,7 @@ async function deleteChatItem(chatId) {
         await fetch(`/api/v1/chats/${chatId}?username=${encodeURIComponent(currentUser)}`, { method: 'DELETE', headers: apiHeaders() });
         if (chatId === currentChatId) {
             currentChatId = null;
+            chatModeChatIds[currentMode] = null;
             clearChatUI();
         }
         await loadChatList();
