@@ -483,11 +483,12 @@ async def delete_history(session_id: str):
 @router.get("/chats", summary="获取用户会话列表")
 async def get_chats(
     username: str,
+    mode: str = Query(None, description="模式过滤: agent/chat"),
     page: int = Query(1, ge=1, description="页码"),          # [#23] 分页
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
 ):
-    """获取用户的所有会话列表（支持分页）"""
-    chats = list_chats(username)
+    """获取用户的会话列表（支持分页，支持按模式过滤）"""
+    chats = list_chats(username, mode=mode)
     total = len(chats)
     start = (page - 1) * page_size
     end = start + page_size
@@ -502,9 +503,9 @@ async def get_chats(
 
 
 @router.post("/chats", summary="创建新会话")
-async def create_chat_api(username: str, title: str = "新对话"):
-    """为用户创建一个新的会话"""
-    chat_info = create_chat(username, title)
+async def create_chat_api(username: str, title: str = "新对话", mode: str = "agent"):
+    """为用户创建一个新的会话（支持指定模式）"""
+    chat_info = create_chat(username, title, mode=mode)
     record_session()
     return {"success": True, "chat": chat_info}
 
