@@ -1,4 +1,4 @@
-# 企业智能助手 Agent2
+# 企业智能助手 Agent
 
 这是一个基于 **LangChain + LangGraph + FastAPI + ChromaDB** 的企业文档智能问答系统，采用 **ReAct Agent** 模式。
 
