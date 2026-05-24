@@ -149,12 +149,15 @@ def _save_user_chats(username: str, chats: list[dict]) -> None:
         json.dump(chats, f, ensure_ascii=False, indent=2)
 
 
-def create_chat(username: str, title: str = "新对话") -> dict:
+def create_chat(username: str, title: str = "新对话", mode: str = "agent") -> dict:
     """
     为用户创建一个新的会话
 
+    Args:
+        mode: 会话模式 "agent" 或 "chat"，用于隔离不同模式的对话列表
+
     Returns:
-        dict: 包含 chat_id 和 title
+        dict: 包含 chat_id、title 和 mode
     """
     chat_id = f"{username}_{uuid.uuid4().hex[:8]}"
     chats = _load_user_chats(username)
@@ -162,6 +165,7 @@ def create_chat(username: str, title: str = "新对话") -> dict:
     chat_info = {
         "chat_id": chat_id,
         "title": title,
+        "mode": mode,
         "created_at": time.time(),
         "updated_at": time.time(),
     }
@@ -171,8 +175,12 @@ def create_chat(username: str, title: str = "新对话") -> dict:
     return chat_info
 
 
-def list_chats(username: str) -> list[dict]:
-    """列出用户的所有会话，按更新时间倒序"""
+def list_chats(username: str, mode: str = None) -> list[dict]:
+    """列出用户的会话，按更新时间倒序
+
+    Args:
+        mode: 可选，按模式过滤 "agent" 或 "chat"，为 None 则返回全部
+    """
     chats = _load_user_chats(username)
     # 更新每个会话的标题（取第一条用户消息的前20字）
     for chat in chats:
@@ -190,6 +198,10 @@ def list_chats(username: str) -> list[dict]:
     # 按更新时间倒序
     chats.sort(key=lambda x: x.get("updated_at", 0), reverse=True)
     _save_user_chats(username, chats)
+    # 按 mode 过滤（如果指定了 mode）
+    if mode:
+        # 兼容旧数据：没有 mode 字段的会话默认归为 "agent"
+        chats = [c for c in chats if c.get("mode", "agent") == mode]
     return chats
 
 
