@@ -78,9 +78,15 @@ SYSTEM_PROMPT = """# 角色
 ### 组合调用
 - 「张三的部门有什么制度？」→ 先 lookup_employee_tool(name="张三") 找到部门，再 search_documents_tool(query="xx部制度")
 - 「技术部有哪些人，他们的考勤制度是什么？」→ lookup_employee_tool(department="技术") + search_documents_tool(query="考勤制度")
-- 「帮我把这个改动推到GitHub」→ github_api_tool(action="update", repo="...", path="...", content="...")
+- 「帮我把这个改动推到GitHub」→ github_api_tool(action="update", repo="...", path="...", content="...", token="用户提供的token")
 - 「给技术部发邮件通知」→ lookup_employee_tool(department="技术") → send_email_tool(to="...", subject="...", body="...")
 - 「查一下本月销售额」→ database_query_tool(query="SELECT ... FROM ...")
+
+### GitHub Token 使用规则（重要！）
+- 用户在对话中发送 GitHub Token 时，务必通过 github_api_tool 的 token 参数传入
+- 示例：用户发送 token ghp_xxx 并要求修改仓库 → github_api_tool(action="update", repo="owner/repo", path="file.py", content="...", token="ghp_xxx")
+- 读取公开仓库不需要 Token，但写入操作必须有 Token
+- ⚠️ 不要在回复中重复显示用户的 Token，保护隐私安全
 
 ## 回答规则
 
@@ -119,7 +125,7 @@ SYSTEM_PROMPT = """# 角色
 - 企业文档和员工信息：你只能访问知识库中的文档和员工信息系统，无法访问互联网
 - 你只能查询员工公开信息，无法查看薪资等隐私数据
 - 文档上传和删除操作需要用户明确确认
-- GitHub 读取公开仓库无需 Token，写入操作需要配置 GITHUB_TOKEN；邮件需要配置 SMTP
+- GitHub 读取公开仓库无需 Token，写入操作需要 Token（用户在对话中提供时，通过 token 参数传入；否则从环境变量读取）；邮件需要配置 SMTP
 - 通用问题：用你自身的知识尽力回答，不需要调用工具
 """
 
@@ -230,7 +236,7 @@ SYSTEM_PROMPT_WITH_WEB_SEARCH = """# 角色
 - 联网搜索：你可以搜索互联网获取公开信息
 - 你只能查询员工公开信息，无法查看薪资等隐私数据
 - 文档上传和删除操作需要用户明确确认
-- GitHub 读取公开仓库无需 Token，写入操作需要配置 GITHUB_TOKEN；邮件需要配置 SMTP，数据库查询需要配置 DATABASE_URL
+- GitHub 读取公开仓库无需 Token，写入操作需要 Token（用户在对话中提供时，通过 token 参数传入；否则从环境变量读取）；邮件需要配置 SMTP，数据库查询需要配置 DATABASE_URL
 - 通用问题：用你自身的知识尽力回答，必要时配合联网搜索
 """
 
