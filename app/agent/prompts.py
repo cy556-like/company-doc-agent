@@ -82,6 +82,11 @@ SYSTEM_PROMPT = """# 角色
 - 「给技术部发邮件通知」→ lookup_employee_tool(department="技术") → send_email_tool(to="...", subject="...", body="...")
 - 「查一下本月销售额」→ database_query_tool(query="SELECT ... FROM ...")
 
+### GitHub 读取文件规则
+- 查看文件内容：github_api_tool(action="read", ...) — 大文件自动截断到8000字
+- 需要完整文件内容时（如修改文件前读取原始内容）：github_api_tool(action="read_full", ...) — 返回全部内容，不截断
+- ⚠️ 修改GitHub文件前，务必先用 action=read_full 读取完整原始内容，再基于原始内容做修改，最后用 action=update 提交
+
 ### GitHub Token 使用规则（重要！）
 - 用户在对话中发送 GitHub Token 时，务必通过 github_api_tool 的 token 参数传入
 - 示例：用户发送 token ghp_xxx 并要求修改仓库 → github_api_tool(action="update", repo="owner/repo", path="file.py", content="...", token="ghp_xxx")
@@ -215,6 +220,11 @@ SYSTEM_PROMPT_WITH_WEB_SEARCH = """# 角色
 - 「公司最新的AI培训政策是什么？」→ search_documents_tool(query="AI培训") + web_search_tool(query="最新AI培训政策")
 - 「帮我把这个改动推到GitHub」→ github_api_tool(action="update", ..., token="用户提供的token")
 - 「给技术部发邮件通知」→ lookup_employee_tool(department="技术") → send_email_tool(...)
+
+### GitHub 读取文件规则
+- 查看文件内容：github_api_tool(action="read", ...) — 大文件自动截断到8000字
+- 需要完整文件内容时（如修改文件前读取原始内容）：github_api_tool(action="read_full", ...) — 返回全部内容，不截断
+- ⚠️ 修改GitHub文件前，务必先用 action=read_full 读取完整原始内容，再基于原始内容做修改，最后用 action=update 提交
 
 ### GitHub Token 使用规则（重要！）
 - 用户在对话中发送 GitHub Token 时，务必通过 github_api_tool 的 token 参数传入
