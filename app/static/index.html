@@ -3,383 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DocAgent · 企业智能工作台</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23FAFBFC'/%3E%3Ctext x='50' y='68' font-family='Arial' font-size='55' font-weight='bold' fill='%232563EB' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+    <title>DocAgent - 企业文档智能平台</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232563EB'/%3E%3Ctext x='50' y='68' font-family='Arial' font-size='55' font-weight='bold' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
     <!-- Markdown Rendering + Code Highlighting -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
     <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-    <!-- Lucide Icons CDN -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <!-- App Styles -->
     <link rel="stylesheet" href="/static/css/style.css">
-
-    <!-- ===== Login Page Styles (Enterprise Light — Glacier White + Order Blue) ===== -->
-    <style id="loginPageStyles">
-        /* Login page visibility control */
-        .login-page.login-hidden { display: none !important; }
-
-        :root {
-            --el-bg: #FAFBFC;
-            --el-bg2: #F0F4F8;
-            --el-white: #FFFFFF;
-            --el-blue: #2563EB;
-            --el-blue-hover: #1D4ED8;
-            --el-blue-light: rgba(37,99,235,0.08);
-            --el-blue-ring: rgba(37,99,235,0.12);
-            --el-blue-glow: rgba(37,99,235,0.06);
-            --el-slate-900: #1E293B;
-            --el-slate-700: #334155;
-            --el-slate-500: #64748B;
-            --el-slate-400: #94A3B8;
-            --el-slate-300: #CBD5E1;
-            --el-slate-200: #E2E8F0;
-            --el-slate-100: #F1F5F9;
-            --el-slate-50: #F8FAFC;
-            --el-border: #E5E7EB;
-            --el-shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-            --el-shadow-md: 0 4px 12px rgba(0,0,0,0.06);
-            --el-shadow-lg: 0 12px 40px rgba(0,0,0,0.08);
-            --el-radius: 8px;
-        }
-
-        /* ===== Unified Login Page ===== */
-        .login-page {
-            display: flex;
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-            background: var(--el-bg);
-            position: relative;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Inter', sans-serif;
-        }
-
-        /* ===== LEFT SIDE — Brand & Value (55%) ===== */
-        .login-visual {
-            position: relative;
-            width: 55%;
-            height: 100%;
-            background: linear-gradient(135deg, var(--el-bg) 0%, var(--el-bg2) 100%);
-            overflow-y: auto;
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-            z-index: 5;
-        }
-
-        /* Scrollbar */
-        .login-visual::-webkit-scrollbar { width: 4px; }
-        .login-visual::-webkit-scrollbar-track { background: transparent; }
-        .login-visual::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.06); border-radius: 4px; }
-        .login-visual::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.1); }
-
-        /* Very subtle dot pattern */
-        .login-visual::before {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 55%; height: 100%;
-            background-image: radial-gradient(circle, rgba(37,99,235,0.025) 1px, transparent 1px);
-            background-size: 28px 28px;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        .visual-scroll-content {
-            position: relative;
-            z-index: 10;
-            padding: 0 56px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Brand Header */
-        .visual-brand-header {
-            padding: 48px 0 24px;
-            flex-shrink: 0;
-        }
-        .brand-logo {
-            display: flex;
-            align-items: center;
-            margin-bottom: 28px;
-        }
-        .brand-logo .logo-icon {
-            width: 36px; height: 36px; margin-right: 10px;
-        }
-        .brand-name {
-            font-size: 22px; font-weight: 700; color: var(--el-slate-900);
-            letter-spacing: -0.5px; line-height: 1;
-        }
-        .brand-name .accent { color: var(--el-blue); }
-
-        /* Hero headline */
-        .hero-headline {
-            font-size: 32px; font-weight: 800; color: var(--el-slate-900);
-            letter-spacing: -0.8px; line-height: 1.2; margin-bottom: 12px;
-        }
-        .hero-subtitle {
-            font-size: 16px; color: var(--el-slate-500); line-height: 1.6;
-            margin-bottom: 32px; max-width: 480px;
-        }
-
-        /* 3D Illustration placeholder */
-        .hero-illustration {
-            width: 100%; max-width: 480px;
-            aspect-ratio: 16 / 9;
-            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 50%, #BFDBFE 100%);
-            border-radius: 16px;
-            margin-bottom: 36px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: var(--el-shadow-lg);
-            border: 1px solid rgba(37,99,235,0.08);
-        }
-        /* Abstract 3D nodes inside illustration */
-        .hero-illustration .node {
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.7);
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(37,99,235,0.15);
-            box-shadow: 0 4px 16px rgba(37,99,235,0.1);
-            display: flex; align-items: center; justify-content: center;
-        }
-        .hero-illustration .node-1 { width: 64px; height: 64px; top: 20%; left: 15%; animation: nodeFloat1 6s ease-in-out infinite; }
-        .hero-illustration .node-2 { width: 48px; height: 48px; top: 40%; left: 50%; animation: nodeFloat2 8s ease-in-out infinite 1s; }
-        .hero-illustration .node-3 { width: 56px; height: 56px; top: 55%; right: 18%; animation: nodeFloat3 7s ease-in-out infinite 2s; }
-        .hero-illustration .node-4 { width: 40px; height: 40px; bottom: 18%; left: 35%; animation: nodeFloat1 9s ease-in-out infinite 3s; }
-        .hero-illustration .node svg { width: 24px; height: 24px; stroke: var(--el-blue); stroke-width: 2; fill: none; }
-        .hero-illustration .node-4 svg { width: 20px; height: 20px; }
-        /* Connection lines */
-        .hero-illustration .conn {
-            position: absolute; background: rgba(37,99,235,0.1); height: 2px; border-radius: 1px;
-        }
-        .hero-illustration .conn-1 { top: 35%; left: 22%; width: 34%; transform: rotate(-8deg); }
-        .hero-illustration .conn-2 { top: 50%; left: 52%; width: 26%; transform: rotate(12deg); }
-        .hero-illustration .conn-3 { top: 62%; left: 30%; width: 30%; transform: rotate(-5deg); }
-        @keyframes nodeFloat1 { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-        @keyframes nodeFloat2 { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-        @keyframes nodeFloat3 { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-
-        /* Value props — 3 cards */
-        .value-props {
-            display: flex; gap: 16px; margin-bottom: 36px;
-        }
-        .value-card {
-            flex: 1;
-            padding: 20px;
-            background: var(--el-white);
-            border: 1px solid var(--el-border);
-            border-radius: 12px;
-            box-shadow: var(--el-shadow-sm);
-            transition: all 0.25s ease;
-        }
-        .value-card:hover {
-            box-shadow: var(--el-shadow-md);
-            border-color: var(--el-slate-300);
-            transform: translateY(-1px);
-        }
-        .value-card .vc-icon {
-            width: 36px; height: 36px; border-radius: 8px;
-            background: var(--el-blue-light);
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 12px;
-        }
-        .value-card .vc-icon svg { width: 18px; height: 18px; stroke: var(--el-blue); stroke-width: 2; fill: none; }
-        .value-card .vc-title {
-            font-size: 14px; font-weight: 700; color: var(--el-slate-900);
-            margin-bottom: 6px;
-        }
-        .value-card .vc-desc {
-            font-size: 12px; color: var(--el-slate-500); line-height: 1.6;
-        }
-
-        /* Trust section */
-        .trust-section {
-            margin-top: auto;
-            padding: 24px 0 32px;
-            border-top: 1px solid var(--el-border);
-        }
-        .trust-label {
-            font-size: 12px; color: var(--el-slate-400); margin-bottom: 16px;
-            letter-spacing: 0.5px;
-        }
-        .trust-logos {
-            display: flex; gap: 24px; align-items: center;
-        }
-        .trust-logo {
-            height: 28px; padding: 4px 12px;
-            background: var(--el-white); border: 1px solid var(--el-border);
-            border-radius: 6px; display: flex; align-items: center; justify-content: center;
-            font-size: 11px; color: var(--el-slate-400); font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        /* ===== RIGHT SIDE — Login Form (45%) ===== */
-        .login-form-side {
-            position: relative;
-            width: 45%;
-            height: 100%;
-            background: var(--el-white);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 5;
-            /* Very subtle left border to separate */
-            border-left: 1px solid var(--el-border);
-        }
-
-        /* Login Card — borderless, uses whitespace */
-        .login-page .login-card {
-            position: relative;
-            z-index: 10;
-            width: 360px;
-            max-width: 90%;
-            padding: 0;
-            background: transparent !important;
-            backdrop-filter: none !important;
-            -webkit-backdrop-filter: none !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            animation: cardFadeIn 0.5s ease forwards;
-            opacity: 0;
-            transform: translateY(8px);
-        }
-
-        @keyframes cardFadeIn { to { opacity: 1; transform: translateY(0); } }
-
-        .login-card .card-deco-line { display: none; }
-
-        .login-card .welcome-heading {
-            font-size: 22px; font-weight: 700; color: var(--el-slate-900);
-            margin-bottom: 4px; letter-spacing: -0.3px;
-        }
-        .login-card .welcome-sub {
-            font-size: 14px; color: var(--el-slate-400); margin-bottom: 28px;
-        }
-        .login-card .welcome-underline { display: none; }
-
-        /* Tab Bar */
-        .login-page .login-card .tab-bar {
-            display: flex; margin-bottom: 24px;
-            background: var(--el-slate-50); border-radius: 8px; padding: 3px;
-            border: none !important; border-bottom: none !important;
-        }
-        .login-page .login-card .tab {
-            flex: 1; text-align: center; padding: 8px 0; cursor: pointer;
-            color: var(--el-slate-500); font-size: 13px; font-weight: 500;
-            border-radius: 6px; transition: all 0.2s ease;
-            border: none !important; border-bottom: none !important;
-            user-select: none;
-        }
-        .login-page .login-card .tab.active {
-            color: var(--el-slate-900) !important; background: var(--el-white);
-            border: none !important; border-bottom: none !important;
-            box-shadow: var(--el-shadow-sm);
-        }
-        .login-page .login-card .tab:not(.active):hover {
-            color: var(--el-slate-700); background: rgba(0,0,0,0.02);
-        }
-
-        /* Form */
-        .login-page .login-card .form-group { margin-bottom: 16px; }
-        .login-page .login-card .form-group label {
-            display: block; margin-bottom: 6px; font-size: 13px;
-            color: var(--el-slate-700); font-weight: 500;
-        }
-        .login-page .login-card .form-group input {
-            width: 100%; padding: 10px 12px;
-            background: var(--el-slate-50) !important;
-            border: 1px solid var(--el-border) !important;
-            border-radius: var(--el-radius); color: var(--el-slate-900) !important;
-            font-size: 14px; outline: none; transition: all 0.2s ease; font-family: inherit;
-        }
-        .login-page .login-card .form-group input::placeholder {
-            color: var(--el-slate-400);
-        }
-        .login-page .login-card .form-group input:focus {
-            border-color: var(--el-blue) !important;
-            background: var(--el-white) !important;
-            box-shadow: 0 0 0 3px var(--el-blue-ring);
-        }
-
-        /* Login button */
-        .login-page .login-card .btn-primary,
-        .login-page .login-card .btn-submit {
-            width: 100%; padding: 10px; border: none; border-radius: var(--el-radius);
-            font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
-            background: var(--el-blue) !important;
-            color: #ffffff !important; letter-spacing: 0.5px;
-            position: relative; overflow: hidden; margin-top: 4px;
-        }
-        .login-page .login-card .btn-primary:hover,
-        .login-page .login-card .btn-submit:hover {
-            background: var(--el-blue-hover) !important;
-            box-shadow: 0 4px 12px rgba(37,99,235,0.2) !important;
-            transform: translateY(1px);
-        }
-        .login-page .login-card .btn-primary:active,
-        .login-page .login-card .btn-submit:active {
-            transform: translateY(0); box-shadow: none !important;
-        }
-
-        /* Divider */
-        .login-divider {
-            display: flex; align-items: center; margin: 16px 0; gap: 12px;
-        }
-        .login-divider::before, .login-divider::after {
-            content: ''; flex: 1; height: 1px; background: var(--el-border);
-        }
-        .login-divider span {
-            font-size: 12px; color: var(--el-slate-400);
-        }
-
-        /* SSO Button */
-        .sso-btn {
-            width: 100%; padding: 10px; border: 1px solid var(--el-border);
-            border-radius: var(--el-radius); font-size: 13px; font-weight: 500;
-            cursor: pointer; transition: all 0.2s ease;
-            background: var(--el-white); color: var(--el-slate-700);
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            font-family: inherit;
-        }
-        .sso-btn:hover {
-            background: var(--el-slate-50); border-color: var(--el-slate-300);
-        }
-        .sso-btn svg { width: 16px; height: 16px; stroke: var(--el-slate-500); stroke-width: 2; fill: none; }
-
-        /* Bottom links */
-        .login-links {
-            display: flex; justify-content: center; gap: 16px; margin-top: 20px;
-        }
-        .login-links a {
-            font-size: 12px; color: var(--el-blue); text-decoration: none;
-            transition: color 0.2s;
-        }
-        .login-links a:hover { color: var(--el-blue-hover); text-decoration: underline; }
-
-        /* Message Box */
-        .login-page .login-card .msg-box { text-align: center; margin-top: 10px; font-size: 13px; min-height: 18px; }
-        .login-page .login-card .msg-box.error { color: #DC2626 !important; }
-        .login-page .login-card .msg-box.success { color: var(--el-blue) !important; }
-
-        /* Hide old elements */
-        .login-page .login-card .subtitle { display: none; }
-        .login-page .login-card h1:not(.welcome-heading) { display: none; }
-
-        /* Responsive */
-        @media (max-width: 900px) {
-            .login-visual { display: none; }
-            .login-form-side { width: 100%; border-left: none; }
-            .login-page .login-card { padding: 0 20px; }
-        }
-        @media (max-width: 480px) {
-            .login-card .welcome-heading { font-size: 20px; }
-        }
-
-        .login-page ::selection { background: var(--el-blue-light); color: var(--el-slate-900); }
-    </style>
 </head>
 <body>
 
@@ -389,139 +20,343 @@
 <!-- Toast Notification -->
 <div class="toast" id="toast" role="alert" aria-live="polite"></div>
 
-<!-- Login Page -->
-<div class="login-page" id="loginPage" role="main" aria-label="登录页面">
+<!-- ========== Landing Page ========== -->
+<div class="landing-page" id="loginPage" role="main" aria-label="产品介绍页">
 
-    <!-- LEFT SIDE — Brand & Value -->
-    <div class="login-visual" id="loginVisual">
-        <div class="visual-scroll-content">
-
-            <!-- Brand Header -->
-            <div class="visual-brand-header">
-                <div class="brand-logo">
-                    <svg class="logo-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="1" y="1" width="34" height="34" rx="8" fill="rgba(37,99,235,0.08)" stroke="#2563EB" stroke-width="1.5"/>
-                        <path d="M10 13h16M10 18h10M10 23h14" stroke="#2563EB" stroke-width="2" stroke-linecap="round"/>
-                        <circle cx="27" cy="23" r="3.5" fill="rgba(37,99,235,0.15)" stroke="#2563EB" stroke-width="1.2"/>
-                        <path d="M25.5 23l1.5 1.5 3-3" stroke="#2563EB" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span class="brand-name">Doc<span class="accent">Agent</span></span>
-                </div>
-
-                <h1 class="hero-headline">构建透明可控的<br>智能工作流</h1>
-                <p class="hero-subtitle">让 AI Agent 无缝融入企业现有系统，从自动化执行到全局管控，安全开启全员智能时代。</p>
+    <!-- Navigation -->
+    <nav class="landing-nav" id="landingNav">
+        <div class="nav-inner">
+            <div class="nav-brand">
+                <div class="nav-logo">D</div>
+                <span class="nav-title">DocAgent</span>
             </div>
-
-            <!-- 3D Illustration -->
-            <div class="hero-illustration">
-                <div class="conn conn-1"></div>
-                <div class="conn conn-2"></div>
-                <div class="conn conn-3"></div>
-                <div class="node node-1">
-                    <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                </div>
-                <div class="node node-2">
-                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-                </div>
-                <div class="node node-3">
-                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                </div>
-                <div class="node node-4">
-                    <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                </div>
+            <div class="nav-links">
+                <a href="#features" class="nav-link">核心能力</a>
+                <a href="#scenarios" class="nav-link">应用场景</a>
+                <a href="#security" class="nav-link">安全合规</a>
+                <a href="#pricing" class="nav-link">版本方案</a>
             </div>
-
-            <!-- 3 Value Props -->
-            <div class="value-props">
-                <div class="value-card">
-                    <div class="vc-icon">
-                        <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    </div>
-                    <div class="vc-title">全链路透明审计</div>
-                    <div class="vc-desc">Agent 思考过程与数据流向完全可视化，企业级权限隔离，让 AI 每一次行动皆可追溯。</div>
-                </div>
-                <div class="value-card">
-                    <div class="vc-icon">
-                        <svg viewBox="0 0 24 24"><path d="M12 2v6M6 8H2v8h4M18 8h4v8h-4"/><rect x="6" y="8" width="12" height="8" rx="2"/></svg>
-                    </div>
-                    <div class="vc-title">零代码极速集成</div>
-                    <div class="vc-desc">开箱即用的企业级连接器，无需重构系统，5 分钟即可让 Agent 连接你的 ERP 与 OA。</div>
-                </div>
-                <div class="value-card">
-                    <div class="vc-icon">
-                        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    </div>
-                    <div class="vc-title">全员赋能</div>
-                    <div class="vc-desc">告别孤岛式 AI，为不同部门一键部署专属 Agent，将个体经验转化为组织能力。</div>
-                </div>
-            </div>
-
-            <!-- Trust Section -->
-            <div class="trust-section">
-                <div class="trust-label">值得信赖的合作伙伴</div>
-                <div class="trust-logos">
-                    <div class="trust-logo">Enterprise A</div>
-                    <div class="trust-logo">Group B</div>
-                    <div class="trust-logo">Corp C</div>
-                    <div class="trust-logo">Fin D</div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- RIGHT SIDE — Login Form -->
-    <div class="login-form-side">
-        <div class="login-card">
-            <h1 class="welcome-heading">登录企业工作台</h1>
-            <div class="welcome-sub">欢迎回来，请验证您的身份</div>
-
-            <div class="tab-bar" role="tablist">
-                <div class="tab active" onclick="switchTab('login')" role="tab" aria-selected="true" tabindex="0">登录</div>
-                <div class="tab" onclick="switchTab('register')" role="tab" aria-selected="false" tabindex="0">注册</div>
-            </div>
-
-            <div id="loginForm" role="tabpanel">
-                <div class="form-group">
-                    <label for="loginUser">用户名</label>
-                    <input type="text" id="loginUser" placeholder="输入用户名" autocomplete="username">
-                </div>
-                <div class="form-group">
-                    <label for="loginPass">密码</label>
-                    <input type="password" id="loginPass" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
-                </div>
-                <button class="btn btn-primary" onclick="doLogin()" aria-label="登录">登 录</button>
-                <div class="msg-box" id="loginMsg" role="status" aria-live="polite"></div>
-
-                <div class="login-divider"><span>或</span></div>
-
-                <button class="sso-btn" type="button">
-                    <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    企业 SSO 单点登录
-                </button>
-
-                <div class="login-links">
-                    <a href="javascript:void(0)">忘记密码?</a>
-                    <a href="javascript:void(0)">联系 IT 管理员</a>
-                    <a href="javascript:void(0)">申请企业试用</a>
-                </div>
-            </div>
-
-            <div id="registerForm" style="display:none" role="tabpanel">
-                <div class="form-group">
-                    <label for="regUser">用户名</label>
-                    <input type="text" id="regUser" placeholder="至少2个字符" autocomplete="username">
-                </div>
-                <div class="form-group">
-                    <label for="regPass">密码</label>
-                    <input type="password" id="regPass" placeholder="至少4个字符" onkeydown="if(event.key==='Enter')doRegister()" autocomplete="new-password">
-                </div>
-                <button class="btn btn-primary" onclick="doRegister()" aria-label="注册">注 册</button>
-                <div class="msg-box" id="regMsg" role="status" aria-live="polite"></div>
+            <div class="nav-actions">
+                <button class="btn-nav-login" onclick="openLoginModal()" aria-label="登录">登录</button>
+                <button class="btn-nav-trial" onclick="openTrialModal()" aria-label="免费试用">免费试用</button>
             </div>
         </div>
-    </div>
+    </nav>
 
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-inner">
+            <div class="hero-content">
+                <div class="hero-badge">AI 驱动 · 企业级文档智能平台</div>
+                <h1 class="hero-title">构建透明可控的<br><span class="hero-highlight">智能工作流</span></h1>
+                <p class="hero-desc">DocAgent 将大语言模型与企业知识库深度融合，为组织提供可审计、可追溯、可管控的文档智能服务。从信息检索到决策支持，让 AI 真正成为企业可信赖的数字员工。</p>
+                <div class="hero-cta">
+                    <button class="btn-hero-trial" onclick="openTrialModal()">开始免费试用</button>
+                    <button class="btn-hero-demo" onclick="openLoginModal()">查看产品演示</button>
+                </div>
+                <div class="hero-trust">
+                    <span class="trust-label">已服务</span>
+                    <span class="trust-number">200+</span>
+                    <span class="trust-label">家企业客户</span>
+                    <span class="trust-divider">|</span>
+                    <span class="trust-number">99.9%</span>
+                    <span class="trust-label">服务可用性</span>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="hero-illustration">
+                    <div class="illus-bg-shapes">
+                        <div class="shape shape-1"></div>
+                        <div class="shape shape-2"></div>
+                        <div class="shape shape-3"></div>
+                    </div>
+                    <div class="illus-card illus-card-main">
+                        <div class="illus-header">
+                            <span class="illus-dot red"></span>
+                            <span class="illus-dot yellow"></span>
+                            <span class="illus-dot green"></span>
+                        </div>
+                        <div class="illus-body">
+                            <div class="illus-chat">
+                                <div class="illus-msg user-msg">
+                                    <span>帮我查找报销流程的最新规定</span>
+                                </div>
+                                <div class="illus-msg ai-msg">
+                                    <div class="ai-typing">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="illus-tools">
+                                <span class="illus-tool active">知识库检索</span>
+                                <span class="illus-tool">文档分析</span>
+                                <span class="illus-tool">合规审查</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="illus-card illus-card-float float-1">
+                        <div class="float-icon">&#128274;</div>
+                        <div class="float-text">权限已验证</div>
+                    </div>
+                    <div class="illus-card illus-card-float float-2">
+                        <div class="float-icon">&#128200;</div>
+                        <div class="float-text">审计追踪</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+        <div class="section-inner">
+            <div class="section-header">
+                <div class="section-badge">核心能力</div>
+                <h2 class="section-title">为什么选择 DocAgent</h2>
+                <p class="section-desc">三大核心能力，让企业 AI 应用从"能用"迈向"好用"与"敢用"</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <div class="feature-icon">&#128270;</div>
+                    </div>
+                    <h3 class="feature-title">全链路透明审计</h3>
+                    <p class="feature-desc">每一次 AI 调用、每一条知识来源、每一轮工具执行均可追溯。完整记录推理链条与数据访问路径，满足企业内审与外部监管的双重合规要求，让 AI 决策过程从"黑盒"变为"白盒"。</p>
+                    <ul class="feature-list">
+                        <li>推理过程全量记录，支持回溯与复现</li>
+                        <li>数据访问权限细粒度管控</li>
+                        <li>一键生成合规审计报告</li>
+                    </ul>
+                </div>
+                <div class="feature-card featured">
+                    <div class="feature-icon-wrap">
+                        <div class="feature-icon">&#9889;</div>
+                    </div>
+                    <div class="featured-tag">最受欢迎</div>
+                    <h3 class="feature-title">零代码极速集成</h3>
+                    <p class="feature-desc">上传文档即可构建专属知识库，无需编写任何代码。自动解析 PDF、Word、Excel 等主流格式，智能分段索引，分钟级完成从原始文档到可查询知识库的转化，让业务团队自助完成部署。</p>
+                    <ul class="feature-list">
+                        <li>支持 PDF / DOCX / TXT / Excel 多格式</li>
+                        <li>智能分段与语义索引，检索精度业界领先</li>
+                        <li>5 分钟完成部署，开箱即用</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon-wrap">
+                        <div class="feature-icon">&#127891;</div>
+                    </div>
+                    <h3 class="feature-title">全员赋能</h3>
+                    <p class="feature-desc">自然语言交互，零学习成本。无论是 HR 查询制度、财务核验流程，还是法务检索条款，所有员工都能像和同事对话一样获取精准答案，真正实现"让知识找人，而非人找知识"。</p>
+                    <ul class="feature-list">
+                        <li>自然语言对话，零培训上手</li>
+                        <li>智能意图识别，精准理解业务问题</li>
+                        <li>多角色权限适配，各取所需</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scenarios Section -->
+    <section class="scenarios-section" id="scenarios">
+        <div class="section-inner">
+            <div class="section-header">
+                <div class="section-badge">应用场景</div>
+                <h2 class="section-title">多场景深度适配</h2>
+                <p class="section-desc">覆盖企业核心业务流程，从日常查询到专业分析，AI 无缝嵌入工作场景</p>
+            </div>
+            <div class="scenarios-grid">
+                <div class="scenario-item">
+                    <div class="scenario-icon">&#128196;</div>
+                    <h4>制度政策查询</h4>
+                    <p>员工自然语言提问，AI 精准定位制度条款，附原文引用与版本追溯，告别翻阅手册的低效模式。</p>
+                </div>
+                <div class="scenario-item">
+                    <div class="scenario-icon">&#128176;</div>
+                    <h4>财务合规审查</h4>
+                    <p>自动核验报销单据与审批流程，比对公司政策与税务法规，降低人为疏漏风险。</p>
+                </div>
+                <div class="scenario-item">
+                    <div class="scenario-icon">&#9878;</div>
+                    <h4>法务合同分析</h4>
+                    <p>快速提取合同关键条款，比对历史模板识别异常条款，生成风险提示摘要。</p>
+                </div>
+                <div class="scenario-item">
+                    <div class="scenario-icon">&#128101;</div>
+                    <h4>HR 智能助理</h4>
+                    <p>7x24 小时解答员工关于假期、薪酬、福利的常见问题，释放 HR 团队精力聚焦战略性工作。</p>
+                </div>
+                <div class="scenario-item">
+                    <div class="scenario-icon">&#128202;</div>
+                    <h4>数据报表解读</h4>
+                    <p>上传数据表格，AI 自动完成趋势分析、异常检测和关键指标提炼，辅助管理层快速决策。</p>
+                </div>
+                <div class="scenario-item">
+                    <div class="scenario-icon">&#128272;</div>
+                    <h4>IT 运维知识库</h4>
+                    <p>将故障处理手册与运维 SOP 结构化，新员工也能快速定位解决方案，缩短平均修复时间。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Section -->
+    <section class="security-section" id="security">
+        <div class="section-inner">
+            <div class="section-header">
+                <div class="section-badge">安全合规</div>
+                <h2 class="section-title">企业级安全体系</h2>
+                <p class="section-desc">从数据传输到存储，从访问控制到审计追踪，全方位守护企业数据资产</p>
+            </div>
+            <div class="security-grid">
+                <div class="security-item">
+                    <div class="security-icon">&#128274;</div>
+                    <h4>数据加密传输</h4>
+                    <p>全链路 TLS 1.3 加密，数据传输与存储双重保护，确保敏感信息零泄露</p>
+                </div>
+                <div class="security-item">
+                    <div class="security-icon">&#128737;</div>
+                    <h4>私有化部署</h4>
+                    <p>支持企业内网独立部署，数据不离开组织边界，满足金融、政务等行业强监管要求</p>
+                </div>
+                <div class="security-item">
+                    <div class="security-icon">&#128203;</div>
+                    <h4>细粒度权限</h4>
+                    <p>基于角色的访问控制（RBAC），文档级与字段级权限隔离，最小权限原则</p>
+                </div>
+                <div class="security-item">
+                    <div class="security-icon">&#128196;&#65039;</div>
+                    <h4>审计日志</h4>
+                    <p>全量操作留痕，支持时间线回溯与合规审计报告导出，满足等保与 GDPR 要求</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing-section" id="pricing">
+        <div class="section-inner">
+            <div class="section-header">
+                <div class="section-badge">版本方案</div>
+                <h2 class="section-title">灵活的版本选择</h2>
+                <p class="section-desc">从初创团队到大型集团，总有一款方案适合您</p>
+            </div>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="pricing-name">社区版</div>
+                    <div class="pricing-price">免费</div>
+                    <div class="pricing-desc">适合小团队试用与评估</div>
+                    <ul class="pricing-features">
+                        <li>3 个用户账号</li>
+                        <li>100 MB 知识库空间</li>
+                        <li>基础文档检索</li>
+                        <li>社区支持</li>
+                    </ul>
+                    <button class="btn-pricing" onclick="openTrialModal()">免费开始</button>
+                </div>
+                <div class="pricing-card popular">
+                    <div class="popular-tag">推荐</div>
+                    <div class="pricing-name">企业版</div>
+                    <div class="pricing-price">联系我们</div>
+                    <div class="pricing-desc">适合中大型企业全面部署</div>
+                    <ul class="pricing-features">
+                        <li>无限用户账号</li>
+                        <li>无限知识库空间</li>
+                        <li>Agent 智能体 + 工具集成</li>
+                        <li>私有化部署支持</li>
+                        <li>SLA 保障 & 专属客服</li>
+                    </ul>
+                    <button class="btn-pricing btn-pricing-primary" onclick="openTrialModal()">申请试用</button>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-name">定制版</div>
+                    <div class="pricing-price">定制报价</div>
+                    <div class="pricing-desc">适合有特殊合规要求的行业</div>
+                    <ul class="pricing-features">
+                        <li>企业版全部功能</li>
+                        <li>专属模型微调</li>
+                        <li>行业知识库预置</li>
+                        <li>驻场部署 & 培训</li>
+                    </ul>
+                    <button class="btn-pricing" onclick="openTrialModal()">咨询方案</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="cta-inner">
+            <h2 class="cta-title">准备好让 AI 成为您的企业利器了吗？</h2>
+            <p class="cta-desc">5 分钟开通，零代码部署，立即体验智能文档管理的全新方式</p>
+            <div class="cta-actions">
+                <button class="btn-cta-trial" onclick="openTrialModal()">立即免费试用</button>
+                <button class="btn-cta-contact" onclick="openLoginModal()">登录企业工作台</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <div class="nav-logo footer-logo">D</div>
+                <span>DocAgent</span>
+            </div>
+            <div class="footer-links">
+                <a href="#features">核心能力</a>
+                <a href="#scenarios">应用场景</a>
+                <a href="#security">安全合规</a>
+                <a href="#pricing">版本方案</a>
+            </div>
+            <div class="footer-copy">&copy; 2025 DocAgent. All rights reserved.</div>
+        </div>
+    </footer>
+
+</div><!-- /landing-page -->
+
+<!-- ========== Login Modal ========== -->
+<div class="modal-overlay" id="loginModal" role="dialog" aria-label="登录" aria-modal="true">
+    <div class="login-modal">
+        <button class="modal-close-btn" onclick="closeLoginModal()" aria-label="关闭">&times;</button>
+        <div class="login-modal-inner">
+            <div class="login-modal-header">
+                <div class="login-logo">D</div>
+                <h3 id="loginModalTitle">登录企业工作台</h3>
+                <p class="login-subtitle" id="loginModalSubtitle">登录您的账号以继续</p>
+            </div>
+            <div class="login-modal-body">
+                <div class="tab-bar" role="tablist">
+                    <div class="tab active" onclick="switchTab('login')" role="tab" aria-selected="true" tabindex="0">登录</div>
+                    <div class="tab" onclick="switchTab('register')" role="tab" aria-selected="false" tabindex="0">注册</div>
+                </div>
+                <div id="loginForm" role="tabpanel">
+                    <div class="form-group">
+                        <label for="loginUser">用户名</label>
+                        <input type="text" id="loginUser" placeholder="输入用户名" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPass">密码</label>
+                        <input type="password" id="loginPass" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
+                    </div>
+                    <button class="btn btn-login" onclick="doLogin()" aria-label="登录">登 录</button>
+                    <div class="msg-box" id="loginMsg" role="status" aria-live="polite"></div>
+                </div>
+                <div id="registerForm" style="display:none" role="tabpanel">
+                    <div class="form-group">
+                        <label for="regUser">用户名</label>
+                        <input type="text" id="regUser" placeholder="至少2个字符" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPass">密码</label>
+                        <input type="password" id="regPass" placeholder="至少4个字符" onkeydown="if(event.key==='Enter')doRegister()" autocomplete="new-password">
+                    </div>
+                    <button class="btn btn-login" onclick="doRegister()" aria-label="注册">注 册</button>
+                    <div class="msg-box" id="regMsg" role="status" aria-live="polite"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Chat Page -->
@@ -549,7 +384,9 @@
                 <input type="text" id="chatSearchInput" placeholder="搜索对话..." oninput="filterChats(this.value)" aria-label="搜索对话">
             </div>
         </div>
-        <div class="chat-list" id="chatList" role="list" aria-label="会话列表"></div>
+        <div class="chat-list" id="chatList" role="list" aria-label="会话列表">
+            <!-- dynamic render -->
+        </div>
         <div class="sidebar-footer">
             <div class="user-avatar" id="sidebarAvatar" aria-hidden="true">U</div>
             <div class="user-name" id="sidebarUsername">用户</div>
@@ -566,17 +403,52 @@
                 <button class="header-btn" onclick="toggleTheme()" title="切换暗色/亮色模式" id="themeBtn" aria-label="切换主题">🌙</button>
                 <select class="model-select" id="modelSelect" onchange="switchModel()" title="切换模型" aria-label="选择模型"></select>
                 <button class="header-btn" onclick="showDocs()" aria-label="知识库管理">知识库</button>
+                <!-- Export dropdown -->
                 <div class="export-wrapper">
                     <button class="header-btn" onclick="toggleExportDropdown()" title="导出对话" aria-label="导出对话" aria-haspopup="true">📥 导出</button>
                     <div class="export-dropdown" id="exportDropdown" role="menu">
-                        <button onclick="exportChat('md')" role="menuitem" aria-label="导出为Markdown">📝 Markdown</button>
-                        <button onclick="exportChat('pdf')" role="menuitem" aria-label="导出为PDF">📄 PDF</button>
+                        <button onclick="exportChat('md')" role="menuitem" aria-label="导出为Markdown">
+                            📝 Markdown
+                        </button>
+                        <button onclick="exportChat('pdf')" role="menuitem" aria-label="导出为PDF">
+                            📄 PDF
+                        </button>
+                    </div>
+                </div>
+                <!-- Stats -->
+                <div class="export-wrapper">
+                    <button class="header-btn stats-btn" onclick="toggleStatsPanel()" title="使用统计" aria-label="使用统计" aria-haspopup="true">📊 统计</button>
+                    <div class="stats-panel" id="statsPanel">
+                        <h4>使用统计</h4>
+                        <div class="stats-grid">
+                            <div class="stats-card">
+                                <div class="stats-value" id="statTotalMsg">0</div>
+                                <div class="stats-label">总消息数</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-value" id="statTodayMsg">0</div>
+                                <div class="stats-label">今日消息</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-value" id="statTotalSessions">0</div>
+                                <div class="stats-label">总会话数</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-value" id="statActive7d">0</div>
+                                <div class="stats-label">7日活跃用户</div>
+                            </div>
+                        </div>
+                        <div class="stats-trend">
+                            <span>近7日趋势</span>
+                            <div class="trend-bar" id="statTrendBars"></div>
+                        </div>
                     </div>
                 </div>
                 <button class="header-btn danger" onclick="clearCurrentChat()" aria-label="清除当前对话">清除当前</button>
             </div>
         </header>
         <div class="chat-content centered" id="chatContent">
+            <!-- Welcome (centered mode) -->
             <div class="welcome-center" id="welcomeCenter">
                 <h2>DocAgent</h2>
                 <p>智能驱动，高效协同。随时为您解答疑问、处理事务，让工作更简单。</p>
@@ -587,7 +459,9 @@
                     <span class="quick-action" onclick="sendQuick('报销流程是什么？')" role="button" tabindex="0">报销流程</span>
                 </div>
             </div>
+            <!-- Chat Messages -->
             <div class="chat-messages" id="chatMessages" role="log" aria-label="对话消息" aria-live="polite"></div>
+            <!-- Scroll to bottom -->
             <button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollToBottom()" title="滚动到底部" aria-label="滚动到底部">↓</button>
             <div class="typing-indicator" id="typingIndicator" aria-hidden="true">
                 <div style="display:flex;align-items:center;gap:12px;">
