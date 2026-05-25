@@ -4,21 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DocAgent - 企业文档智能平台</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231A1A2E'/%3E%3Ctext x='50' y='68' font-family='Georgia' font-size='55' font-weight='bold' fill='white' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="DocAgent">
+    <meta name="theme-color" content="#1A1A2E">
+    <!-- Markdown Rendering + Code Highlighting -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
     <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <!-- Serif Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- App Styles -->
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+
+<!-- Sidebar Overlay (Mobile) -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebarMobile()"></div>
+
+<!-- Toast Notification -->
 <div class="toast" id="toast" role="alert" aria-live="polite"></div>
 
 <!-- ========== Landing Page ========== -->
 <div class="landing-page" id="loginPage" role="main" aria-label="产品介绍页">
+
+    <!-- Navigation -->
     <nav class="landing-nav" id="landingNav">
         <div class="nav-inner">
             <div class="nav-brand">
@@ -32,12 +50,17 @@
                 <a href="#faq" class="nav-link">常见问题</a>
             </div>
             <div class="nav-actions">
-                <button class="btn-nav-login" onclick="openLoginModal()">登录</button>
-                <button class="btn-nav-trial" onclick="openTrialModal()">免费开始</button>
+                <button class="btn-nav-install" id="pwaInstallBtn" onclick="installPWA()" aria-label="安装App" style="display:none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    安装App
+                </button>
+                <button class="btn-nav-login" onclick="openLoginModal()" aria-label="登录">登录</button>
+                <button class="btn-nav-trial" onclick="openTrialModal()" aria-label="免费开始">免费开始</button>
             </div>
         </div>
     </nav>
 
+    <!-- Hero Section -->
     <section class="hero-section">
         <div class="hero-inner">
             <div class="hero-content">
@@ -52,14 +75,19 @@
             <div class="hero-visual">
                 <div class="hero-demo-card">
                     <div class="demo-card-header">
-                        <span class="demo-dot" style="background:#EF4444"></span>
-                        <span class="demo-dot" style="background:#F59E0B"></span>
-                        <span class="demo-dot" style="background:#22C55E"></span>
+                        <span class="demo-dot" style="background:#EF4444;"></span>
+                        <span class="demo-dot" style="background:#F59E0B;"></span>
+                        <span class="demo-dot" style="background:#22C55E;"></span>
                         <span class="demo-title">DocAgent</span>
                     </div>
                     <div class="demo-card-body">
-                        <div class="demo-msg demo-msg-user"><span>帮我查找报销流程的最新规定</span></div>
-                        <div class="demo-msg demo-msg-ai"><span>根据《公司财务管理制度 v3.2》，报销流程如下...</span></div>
+                        <div class="demo-msg demo-msg-user">
+                            <span>帮我查找报销流程的最新规定</span>
+                        </div>
+                        <div class="demo-msg demo-msg-ai">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1A2E" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+                            <span>根据《公司财务管理制度 v3.2》，报销流程如下...</span>
+                        </div>
                         <div class="demo-tools">
                             <span class="demo-tool demo-tool-active">知识库检索</span>
                             <span class="demo-tool">文档分析</span>
@@ -71,30 +99,39 @@
         </div>
     </section>
 
+    <!-- Core Features Section -->
     <section class="coze-features-section" id="features">
         <div class="section-inner">
             <div class="section-header">
                 <h2 class="section-title seri-font">核心功能</h2>
-                <p class="section-desc">四大核心能力，让企业 AI 从"能用"迈向"好用"与"敢用"</p>
+                <p class="section-desc">四大核心能力，让企业 AI 应用从"能用"迈向"好用"与"敢用"</p>
             </div>
             <div class="coze-features-grid">
                 <div class="coze-feature-card">
-                    <div class="coze-feature-icon" style="background:#E8F5E9"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+                    <div class="coze-feature-icon" style="background:#E8F5E9;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    </div>
                     <h3 class="coze-feature-title">越用越强</h3>
                     <p class="coze-feature-desc">知识库持续学习与迭代，每次交互都在优化检索精度与回答质量，让 Agent 随业务成长不断进化</p>
                 </div>
                 <div class="coze-feature-card">
-                    <div class="coze-feature-icon" style="background:#FFF3E0"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+                    <div class="coze-feature-icon" style="background:#FFF3E0;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                    </div>
                     <h3 class="coze-feature-title">跨端行动力</h3>
                     <p class="coze-feature-desc">支持 Web、移动端、API 多渠道接入，无论在哪都能即时获取文档智能服务，工作无缝衔接</p>
                 </div>
                 <div class="coze-feature-card">
-                    <div class="coze-feature-icon" style="background:#E3F2FD"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
+                    <div class="coze-feature-icon" style="background:#E3F2FD;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                    </div>
                     <h3 class="coze-feature-title">零代码集成</h3>
                     <p class="coze-feature-desc">上传文档即可构建专属知识库，自动解析 PDF、Word、Excel 等格式，5 分钟完成部署，开箱即用</p>
                 </div>
                 <div class="coze-feature-card">
-                    <div class="coze-feature-icon" style="background:#F3E5F5"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7B1FA2" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                    <div class="coze-feature-icon" style="background:#F3E5F5;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7B1FA2" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
                     <h3 class="coze-feature-title">全链路审计</h3>
                     <p class="coze-feature-desc">每一次 AI 调用、每条知识来源均可追溯，完整记录推理链条与数据访问路径，满足合规要求</p>
                 </div>
@@ -102,6 +139,7 @@
         </div>
     </section>
 
+    <!-- Agent Capabilities Section -->
     <section class="coze-capabilities-section" id="capabilities">
         <div class="section-inner">
             <div class="section-header">
@@ -110,21 +148,54 @@
             </div>
             <div class="coze-capabilities-map">
                 <div class="cap-center">
-                    <div class="cap-center-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></div>
+                    <div class="cap-center-icon">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                    </div>
                     <span class="cap-center-label">DocAgent</span>
                 </div>
                 <div class="cap-nodes">
-                    <div class="cap-node"><div class="cap-node-icon" style="background:#E8F5E9"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div><span>智能检索</span></div>
-                    <div class="cap-node"><div class="cap-node-icon" style="background:#FFF3E0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div><span>文档解析</span></div>
-                    <div class="cap-node"><div class="cap-node-icon" style="background:#E3F2FD"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div><span>内容生成</span></div>
-                    <div class="cap-node"><div class="cap-node-icon" style="background:#F3E5F5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7B1FA2" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><span>合规审查</span></div>
-                    <div class="cap-node"><div class="cap-node-icon" style="background:#FFEBEE"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C62828" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div><span>API 集成</span></div>
-                    <div class="cap-node"><div class="cap-node-icon" style="background:#E0F7FA"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00695C" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><span>多轮对话</span></div>
+                    <div class="cap-node">
+                        <div class="cap-node-icon" style="background:#E8F5E9;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                        </div>
+                        <span>智能检索</span>
+                    </div>
+                    <div class="cap-node">
+                        <div class="cap-node-icon" style="background:#FFF3E0;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+                        </div>
+                        <span>文档解析</span>
+                    </div>
+                    <div class="cap-node">
+                        <div class="cap-node-icon" style="background:#E3F2FD;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </div>
+                        <span>内容生成</span>
+                    </div>
+                    <div class="cap-node">
+                        <div class="cap-node-icon" style="background:#F3E5F5;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7B1FA2" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <span>合规审查</span>
+                    </div>
+                    <div class="cap-node">
+                        <div class="cap-node-icon" style="background:#FFEBEE;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C62828" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+                        </div>
+                        <span>API 集成</span>
+                    </div>
+                    <div class="cap-node">
+                        <div class="cap-node-icon" style="background:#E0F7FA;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00695C" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                        </div>
+                        <span>多轮对话</span>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
+    <!-- Scenarios Section -->
     <section class="coze-scenarios-section" id="scenarios">
         <div class="section-inner">
             <div class="section-header">
@@ -133,32 +204,44 @@
             </div>
             <div class="coze-scenarios-grid">
                 <div class="coze-scenario-card">
-                    <div class="coze-scenario-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg></div>
+                    <div class="coze-scenario-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                    </div>
                     <h4 class="coze-scenario-title">制度政策查询</h4>
                     <p class="coze-scenario-desc">自然语言提问，精准定位制度条款，附原文引用与版本追溯</p>
                 </div>
                 <div class="coze-scenario-card">
-                    <div class="coze-scenario-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+                    <div class="coze-scenario-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                    </div>
                     <h4 class="coze-scenario-title">财务合规审查</h4>
                     <p class="coze-scenario-desc">自动核验报销单据与审批流程，比对公司政策与税务法规</p>
                 </div>
                 <div class="coze-scenario-card">
-                    <div class="coze-scenario-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg></div>
+                    <div class="coze-scenario-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>
+                    </div>
                     <h4 class="coze-scenario-title">法务合同分析</h4>
                     <p class="coze-scenario-desc">快速提取关键条款，比对历史模板识别异常，生成风险提示</p>
                 </div>
                 <div class="coze-scenario-card">
-                    <div class="coze-scenario-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
+                    <div class="coze-scenario-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                    </div>
                     <h4 class="coze-scenario-title">HR 智能助理</h4>
                     <p class="coze-scenario-desc">7x24 小时解答假期、薪酬、福利等常见问题，释放 HR 精力</p>
                 </div>
                 <div class="coze-scenario-card">
-                    <div class="coze-scenario-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div>
+                    <div class="coze-scenario-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                    </div>
                     <h4 class="coze-scenario-title">数据报表解读</h4>
                     <p class="coze-scenario-desc">上传数据表格，自动完成趋势分析、异常检测和指标提炼</p>
                 </div>
                 <div class="coze-scenario-card">
-                    <div class="coze-scenario-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
+                    <div class="coze-scenario-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                    </div>
                     <h4 class="coze-scenario-title">IT 运维知识库</h4>
                     <p class="coze-scenario-desc">将故障手册与运维 SOP 结构化，快速定位解决方案</p>
                 </div>
@@ -166,6 +249,7 @@
         </div>
     </section>
 
+    <!-- FAQ Section -->
     <section class="coze-faq-section" id="faq">
         <div class="section-inner">
             <div class="coze-faq-layout">
@@ -175,30 +259,56 @@
                 </div>
                 <div class="coze-faq-right">
                     <div class="coze-faq-item" onclick="toggleFaq(this)">
-                        <div class="coze-faq-q"><span>DocAgent 支持哪些文档格式？</span><svg class="coze-faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
-                        <div class="coze-faq-a"><p>DocAgent 支持 PDF、Word（DOCX）、Excel（XLSX）、TXT、Markdown 等主流文档格式。上传后系统自动完成解析、分段与语义索引，无需手动配置。</p></div>
+                        <div class="coze-faq-q">
+                            <span>DocAgent 支持哪些文档格式？</span>
+                            <svg class="coze-faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                        <div class="coze-faq-a">
+                            <p>DocAgent 支持 PDF、Word（DOCX）、Excel（XLSX）、TXT、Markdown 等主流文档格式。上传后系统自动完成解析、分段与语义索引，无需手动配置。</p>
+                        </div>
                     </div>
                     <div class="coze-faq-item" onclick="toggleFaq(this)">
-                        <div class="coze-faq-q"><span>数据安全如何保障？</span><svg class="coze-faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
-                        <div class="coze-faq-a"><p>全链路 TLS 1.3 加密传输，支持企业内网私有化部署，数据不离开组织边界。基于 RBAC 的细粒度权限控制，全量操作留痕可审计，满足等保与 GDPR 要求。</p></div>
+                        <div class="coze-faq-q">
+                            <span>数据安全如何保障？</span>
+                            <svg class="coze-faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                        <div class="coze-faq-a">
+                            <p>全链路 TLS 1.3 加密传输，支持企业内网私有化部署，数据不离开组织边界。基于 RBAC 的细粒度权限控制，全量操作留痕可审计，满足等保与 GDPR 要求。</p>
+                        </div>
                     </div>
                     <div class="coze-faq-item" onclick="toggleFaq(this)">
-                        <div class="coze-faq-q"><span>部署需要多长时间？</span><svg class="coze-faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
-                        <div class="coze-faq-a"><p>SaaS 版本即开即用，5 分钟即可完成账号创建与知识库初始化。私有化部署通常在 1-3 个工作日内完成，包含环境配置与基础数据导入。</p></div>
+                        <div class="coze-faq-q">
+                            <span>部署需要多长时间？</span>
+                            <svg class="coze-faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                        <div class="coze-faq-a">
+                            <p>SaaS 版本即开即用，5 分钟即可完成账号创建与知识库初始化。私有化部署通常在 1-3 个工作日内完成，包含环境配置与基础数据导入。</p>
+                        </div>
                     </div>
                     <div class="coze-faq-item" onclick="toggleFaq(this)">
-                        <div class="coze-faq-q"><span>是否支持自定义 Agent 能力？</span><svg class="coze-faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
-                        <div class="coze-faq-a"><p>企业版支持通过 API 集成自定义工具与插件，可以扩展 Agent 的检索、分析和执行能力，满足行业特定场景需求。</p></div>
+                        <div class="coze-faq-q">
+                            <span>是否支持自定义 Agent 能力？</span>
+                            <svg class="coze-faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                        <div class="coze-faq-a">
+                            <p>企业版支持通过 API 集成自定义工具与插件，可以扩展 Agent 的检索、分析和执行能力，满足行业特定场景需求。</p>
+                        </div>
                     </div>
                     <div class="coze-faq-item" onclick="toggleFaq(this)">
-                        <div class="coze-faq-q"><span>免费版和企业版有什么区别？</span><svg class="coze-faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
-                        <div class="coze-faq-a"><p>免费版提供 3 个用户账号和 100MB 知识库空间，适合小团队试用评估。企业版不限用户与空间，支持私有化部署、Agent 自定义和 SLA 保障。</p></div>
+                        <div class="coze-faq-q">
+                            <span>免费版和企业版有什么区别？</span>
+                            <svg class="coze-faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#656565" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                        <div class="coze-faq-a">
+                            <p>免费版提供 3 个用户账号和 100MB 知识库空间，适合小团队试用评估。企业版不限用户与空间，支持私有化部署、Agent 自定义和 SLA 保障，适合中大型企业全面部署。</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
+    <!-- Bottom CTA Section -->
     <section class="coze-cta-section">
         <div class="coze-cta-inner">
             <h2 class="coze-cta-title seri-font">企业文档，就用 DocAgent</h2>
@@ -207,16 +317,26 @@
         </div>
     </section>
 
+    <!-- Footer -->
     <footer class="coze-footer">
         <div class="coze-footer-inner">
-            <div class="coze-footer-brand"><div class="nav-logo coze-footer-logo">D</div><span class="coze-footer-name">DocAgent</span></div>
-            <div class="coze-footer-links"><a href="#features">核心功能</a><a href="#capabilities">Agent 能力</a><a href="#scenarios">应用场景</a><a href="#faq">常见问题</a></div>
+            <div class="coze-footer-brand">
+                <div class="nav-logo coze-footer-logo">D</div>
+                <span class="coze-footer-name">DocAgent</span>
+            </div>
+            <div class="coze-footer-links">
+                <a href="#features">核心功能</a>
+                <a href="#capabilities">Agent 能力</a>
+                <a href="#scenarios">应用场景</a>
+                <a href="#faq">常见问题</a>
+            </div>
             <div class="coze-footer-copy">&copy; 2025 DocAgent. All rights reserved.</div>
         </div>
     </footer>
-</div>
 
-<!-- Login Modal -->
+</div><!-- /landing-page -->
+
+<!-- ========== Login Modal ========== -->
 <div class="modal-overlay" id="loginModal" role="dialog" aria-label="登录" aria-modal="true">
     <div class="login-modal">
         <button class="modal-close-btn" onclick="closeLoginModal()" aria-label="关闭">&times;</button>
@@ -228,20 +348,32 @@
             </div>
             <div class="login-modal-body">
                 <div class="tab-bar" role="tablist">
-                    <div class="tab active" onclick="switchTab('login')" role="tab">登录</div>
-                    <div class="tab" onclick="switchTab('register')" role="tab">注册</div>
+                    <div class="tab active" onclick="switchTab('login')" role="tab" aria-selected="true" tabindex="0">登录</div>
+                    <div class="tab" onclick="switchTab('register')" role="tab" aria-selected="false" tabindex="0">注册</div>
                 </div>
                 <div id="loginForm" role="tabpanel">
-                    <div class="form-group"><label for="loginUser">用户名</label><input type="text" id="loginUser" placeholder="输入用户名" autocomplete="username"></div>
-                    <div class="form-group"><label for="loginPass">密码</label><input type="password" id="loginPass" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password"></div>
-                    <button class="btn btn-login" onclick="doLogin()">登 录</button>
-                    <div class="msg-box" id="loginMsg"></div>
+                    <div class="form-group">
+                        <label for="loginUser">用户名</label>
+                        <input type="text" id="loginUser" placeholder="输入用户名" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPass">密码</label>
+                        <input type="password" id="loginPass" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
+                    </div>
+                    <button class="btn btn-login" onclick="doLogin()" aria-label="登录">登 录</button>
+                    <div class="msg-box" id="loginMsg" role="status" aria-live="polite"></div>
                 </div>
                 <div id="registerForm" style="display:none" role="tabpanel">
-                    <div class="form-group"><label for="regUser">用户名</label><input type="text" id="regUser" placeholder="至少2个字符" autocomplete="username"></div>
-                    <div class="form-group"><label for="regPass">密码</label><input type="password" id="regPass" placeholder="至少4个字符" onkeydown="if(event.key==='Enter')doRegister()" autocomplete="new-password"></div>
-                    <button class="btn btn-login" onclick="doRegister()">注 册</button>
-                    <div class="msg-box" id="regMsg"></div>
+                    <div class="form-group">
+                        <label for="regUser">用户名</label>
+                        <input type="text" id="regUser" placeholder="至少2个字符" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="regPass">密码</label>
+                        <input type="password" id="regPass" placeholder="至少4个字符" onkeydown="if(event.key==='Enter')doRegister()" autocomplete="new-password">
+                    </div>
+                    <button class="btn btn-login" onclick="doRegister()" aria-label="注册">注 册</button>
+                    <div class="msg-box" id="regMsg" role="status" aria-live="polite"></div>
                 </div>
             </div>
         </div>
@@ -250,75 +382,137 @@
 
 <!-- Chat Page -->
 <div class="chat-page" id="chatPage" role="main">
+
+    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar" role="navigation" aria-label="对话列表">
         <div class="sidebar-header">
             <div class="mode-switcher-box" id="modeSwitcherBox" role="radiogroup" aria-label="模式切换">
-                <button class="mode-btn" id="modeChat" onclick="switchMode('chat')" role="radio" aria-checked="false" aria-label="Chat模式"><span class="mode-icon">💬</span><span class="mode-label">Chat</span></button>
-                <button class="mode-btn active" id="modeAgent" onclick="switchMode('agent')" role="radio" aria-checked="true" aria-label="Agent模式"><span class="mode-icon">🤖</span><span class="mode-label">Agent</span></button>
+                <button class="mode-btn" id="modeChat" onclick="switchMode('chat')" role="radio" aria-checked="false" aria-label="Chat模式">
+                    <span class="mode-icon">💬</span>
+                    <span class="mode-label">Chat</span>
+                </button>
+                <button class="mode-btn active" id="modeAgent" onclick="switchMode('agent')" role="radio" aria-checked="true" aria-label="Agent模式">
+                    <span class="mode-icon">🤖</span>
+                    <span class="mode-label">Agent</span>
+                </button>
             </div>
-            <button class="new-chat-btn" onclick="createNewChat()" aria-label="新建对话"><span class="plus-icon">+</span><span>新建对话</span></button>
-            <div class="chat-search" id="chatSearch"><span class="search-icon">🔍</span><input type="text" id="chatSearchInput" placeholder="搜索对话..." oninput="filterChats(this.value)" aria-label="搜索对话"></div>
+            <button class="new-chat-btn" onclick="createNewChat()" aria-label="新建对话">
+                <span class="plus-icon">+</span>
+                <span>新建对话</span>
+            </button>
+            <div class="chat-search" id="chatSearch">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="chatSearchInput" placeholder="搜索对话..." oninput="filterChats(this.value)" aria-label="搜索对话">
+            </div>
         </div>
-        <div class="chat-list" id="chatList" role="list"></div>
+        <div class="chat-list" id="chatList" role="list" aria-label="会话列表">
+            <!-- dynamic render -->
+        </div>
         <div class="sidebar-footer">
-            <div class="user-avatar" id="sidebarAvatar">U</div>
+            <div class="user-avatar" id="sidebarAvatar" aria-hidden="true">U</div>
             <div class="user-name" id="sidebarUsername">用户</div>
-            <button class="logout-btn" onclick="doLogout()" title="退出登录">⏻</button>
+            <button class="logout-btn" onclick="doLogout()" title="退出登录" aria-label="退出登录">⏻</button>
         </div>
     </aside>
+
+    <!-- Chat Main -->
     <div class="chat-main">
         <header class="chat-header">
-            <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="切换侧边栏">☰</button>
+            <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="切换侧边栏" aria-label="切换侧边栏">☰</button>
             <h1 id="chatTitle">DocAgent</h1>
             <div class="header-actions">
-                <button class="header-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
-                <select class="model-select" id="modelSelect" onchange="switchModel()"></select>
-                <button class="header-btn" onclick="showDocs()">知识库</button>
+                <button class="header-btn" onclick="toggleTheme()" title="切换暗色/亮色模式" id="themeBtn" aria-label="切换主题">🌙</button>
+                <select class="model-select" id="modelSelect" onchange="switchModel()" title="切换模型" aria-label="选择模型"></select>
+                <button class="header-btn" onclick="showDocs()" aria-label="知识库管理">知识库</button>
+                <!-- Export dropdown -->
                 <div class="export-wrapper">
-                    <button class="header-btn" onclick="toggleExportDropdown()">📥 导出</button>
-                    <div class="export-dropdown" id="exportDropdown"><button onclick="exportChat('md')">📝 Markdown</button><button onclick="exportChat('pdf')">📄 PDF</button></div>
+                    <button class="header-btn" onclick="toggleExportDropdown()" title="导出对话" aria-label="导出对话" aria-haspopup="true">📥 导出</button>
+                    <div class="export-dropdown" id="exportDropdown" role="menu">
+                        <button onclick="exportChat('md')" role="menuitem" aria-label="导出为Markdown">
+                            📝 Markdown
+                        </button>
+                        <button onclick="exportChat('pdf')" role="menuitem" aria-label="导出为PDF">
+                            📄 PDF
+                        </button>
+                    </div>
                 </div>
+                <!-- Stats -->
                 <div class="export-wrapper">
-                    <button class="header-btn stats-btn" onclick="toggleStatsPanel()">📊 统计</button>
+                    <button class="header-btn stats-btn" onclick="toggleStatsPanel()" title="使用统计" aria-label="使用统计" aria-haspopup="true">📊 统计</button>
                     <div class="stats-panel" id="statsPanel">
                         <h4>使用统计</h4>
                         <div class="stats-grid">
-                            <div class="stats-card"><div class="stats-value" id="statTotalMsg">0</div><div class="stats-label">总消息数</div></div>
-                            <div class="stats-card"><div class="stats-value" id="statTodayMsg">0</div><div class="stats-label">今日消息</div></div>
-                            <div class="stats-card"><div class="stats-value" id="statTotalSessions">0</div><div class="stats-label">总会话数</div></div>
-                            <div class="stats-card"><div class="stats-value" id="statActive7d">0</div><div class="stats-label">7日活跃用户</div></div>
+                            <div class="stats-card">
+                                <div class="stats-value" id="statTotalMsg">0</div>
+                                <div class="stats-label">总消息数</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-value" id="statTodayMsg">0</div>
+                                <div class="stats-label">今日消息</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-value" id="statTotalSessions">0</div>
+                                <div class="stats-label">总会话数</div>
+                            </div>
+                            <div class="stats-card">
+                                <div class="stats-value" id="statActive7d">0</div>
+                                <div class="stats-label">7日活跃用户</div>
+                            </div>
                         </div>
-                        <div class="stats-trend"><span>近7日趋势</span><div class="trend-bar" id="statTrendBars"></div></div>
+                        <div class="stats-trend">
+                            <span>近7日趋势</span>
+                            <div class="trend-bar" id="statTrendBars"></div>
+                        </div>
                     </div>
                 </div>
-                <button class="header-btn danger" onclick="clearCurrentChat()">清除当前</button>
+                <button class="header-btn danger" onclick="clearCurrentChat()" aria-label="清除当前对话">清除当前</button>
             </div>
         </header>
         <div class="chat-content centered" id="chatContent">
+            <!-- Welcome (centered mode) -->
             <div class="welcome-center" id="welcomeCenter">
                 <h2>DocAgent</h2>
                 <p>智能驱动，高效协同。随时为您解答疑问、处理事务，让工作更简单。</p>
                 <div class="quick-actions">
-                    <span class="quick-action" onclick="sendQuick('公司年假制度是什么？')">年假制度</span>
-                    <span class="quick-action" onclick="sendQuick('列出所有员工信息')">员工信息</span>
-                    <span class="quick-action" onclick="sendQuick('知识库有哪些文档？')">知识库文档</span>
-                    <span class="quick-action" onclick="sendQuick('报销流程是什么？')">报销流程</span>
+                    <span class="quick-action" onclick="sendQuick('公司年假制度是什么？')" role="button" tabindex="0">年假制度</span>
+                    <span class="quick-action" onclick="sendQuick('列出所有员工信息')" role="button" tabindex="0">员工信息</span>
+                    <span class="quick-action" onclick="sendQuick('知识库有哪些文档？')" role="button" tabindex="0">知识库文档</span>
+                    <span class="quick-action" onclick="sendQuick('报销流程是什么？')" role="button" tabindex="0">报销流程</span>
                 </div>
             </div>
-            <div class="chat-messages" id="chatMessages" role="log" aria-live="polite"></div>
-            <button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollToBottom()">↓</button>
-            <div class="typing-indicator" id="typingIndicator"><div style="display:flex;align-items:center;gap:12px"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div></div>
+            <!-- Chat Messages -->
+            <div class="chat-messages" id="chatMessages" role="log" aria-label="对话消息" aria-live="polite"></div>
+            <!-- Scroll to bottom -->
+            <button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollToBottom()" title="滚动到底部" aria-label="滚动到底部">↓</button>
+            <div class="typing-indicator" id="typingIndicator" aria-hidden="true">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                </div>
+            </div>
             <div class="chat-input-area">
                 <div class="input-container">
-                    <div class="file-bar" id="fileBar"><span id="fileIcon">📎</span><span class="file-name" id="fileName"></span><span class="remove-file" onclick="removeFile()">✕</span></div>
+                    <div class="file-bar" id="fileBar">
+                        <span id="fileIcon">📎</span>
+                        <span class="file-name" id="fileName"></span>
+                        <span class="remove-file" onclick="removeFile()" role="button" aria-label="移除文件">✕</span>
+                    </div>
                     <div class="input-top">
-                        <textarea id="msgInput" rows="1" placeholder="输入问题，或粘贴/拖拽文件..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-                        <div class="send-btn-wrap"><button class="icon-btn send" id="sendBtn" onclick="sendMessage()">➤</button><button class="icon-btn stop" id="stopBtn" onclick="stopGeneration()" style="display:none">■</button></div>
+                        <textarea id="msgInput" rows="1" placeholder="输入问题，或粘贴/拖拽文件..." onkeydown="handleKey(event)" oninput="autoResize(this)" aria-label="输入消息"></textarea>
+                        <div class="send-btn-wrap">
+                            <button class="icon-btn send" id="sendBtn" onclick="sendMessage()" title="发送" aria-label="发送消息">➤</button>
+                            <button class="icon-btn stop" id="stopBtn" onclick="stopGeneration()" title="停止生成" style="display:none;" aria-label="停止生成">■</button>
+                        </div>
                     </div>
                     <div class="input-toolbar">
-                        <button class="toolbar-btn" onclick="document.getElementById('fileInput').click()">📎</button>
-                        <button class="web-search-toggle" id="webSearchToggle" onclick="toggleWebSearch()"><span class="toggle-icon">🌐</span><span class="toggle-label">联网搜索</span></button>
-                        <button class="deep-think-toggle" id="deepThinkToggle" onclick="toggleDeepThink()"><span class="toggle-icon">🧠</span><span class="toggle-label">深度思考</span></button>
+                        <button class="toolbar-btn" onclick="document.getElementById('fileInput').click()" title="上传文件或图片" aria-label="上传文件">📎</button>
+                        <button class="web-search-toggle" id="webSearchToggle" onclick="toggleWebSearch()" title="开启/关闭联网搜索" aria-label="联网搜索" aria-pressed="false">
+                            <span class="toggle-icon">🌐</span>
+                            <span class="toggle-label">联网搜索</span>
+                        </button>
+                        <button class="deep-think-toggle" id="deepThinkToggle" onclick="toggleDeepThink()" title="开启/关闭深度思考" aria-label="深度思考" aria-pressed="false">
+                            <span class="toggle-icon">🧠</span>
+                            <span class="toggle-label">深度思考</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -328,26 +522,97 @@
 </div>
 
 <!-- Knowledge Base Modal -->
-<div class="modal-overlay" id="docsModal" role="dialog" aria-modal="true">
+<div class="modal-overlay" id="docsModal" role="dialog" aria-label="知识库管理" aria-modal="true">
     <div class="modal">
         <h3>知识库管理</h3>
-        <div class="upload-section" id="uploadZone" onclick="document.getElementById('kbFileInput').click()"><div class="upload-icon">📤</div><div class="upload-text">点击或拖拽文件到此处 <strong>上传到知识库</strong></div><div class="upload-hint">支持 PDF、TXT、DOCX 格式</div></div>
+        <div class="upload-section" id="uploadZone" onclick="document.getElementById('kbFileInput').click()" role="button" aria-label="上传文档">
+            <div class="upload-icon">📤</div>
+            <div class="upload-text">点击或拖拽文件到此处 <strong>上传到知识库</strong></div>
+            <div class="upload-hint">支持 PDF、TXT、DOCX 格式</div>
+        </div>
         <input type="file" id="kbFileInput" accept=".pdf,.txt,.docx" onchange="onKbFileSelected(event)" multiple aria-hidden="true">
-        <div class="upload-progress" id="uploadProgress"><div class="progress-file" id="progressFileName">正在上传...</div><div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBarFill"></div></div><div class="progress-status" id="progressStatus">上传中...</div></div>
+        <div class="upload-progress" id="uploadProgress" role="progressbar">
+            <div class="progress-file" id="progressFileName">正在上传...</div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBarFill"></div></div>
+            <div class="progress-status" id="progressStatus">上传中...</div>
+        </div>
         <div class="divider">已索引文档</div>
-        <div class="doc-list" id="docList"><div class="doc-empty">加载中...</div></div>
-        <button class="btn btn-primary close-btn" onclick="closeDocs()">关闭</button>
+        <div class="doc-list" id="docList" role="list"><div class="doc-empty">加载中...</div></div>
+        <button class="btn btn-primary close-btn" onclick="closeDocs()" aria-label="关闭">关闭</button>
     </div>
 </div>
 
 <!-- Rename Overlay -->
-<div class="rename-overlay" id="renameOverlay" role="dialog" aria-modal="true">
-    <div class="rename-card"><h3>重命名对话</h3><input type="text" id="renameInput" placeholder="输入新名称" onkeydown="if(event.key==='Enter')confirmRename()"><div class="rename-btns"><button class="cancel-btn" onclick="cancelRename()">取消</button><button class="confirm-btn" onclick="confirmRename()">确认</button></div></div>
+<div class="rename-overlay" id="renameOverlay" role="dialog" aria-label="重命名对话" aria-modal="true">
+    <div class="rename-card">
+        <h3>重命名对话</h3>
+        <input type="text" id="renameInput" placeholder="输入新名称" onkeydown="if(event.key==='Enter')confirmRename()" aria-label="新名称">
+        <div class="rename-btns">
+            <button class="cancel-btn" onclick="cancelRename()" aria-label="取消">取消</button>
+            <button class="confirm-btn" onclick="confirmRename()" aria-label="确认重命名">确认</button>
+        </div>
+    </div>
 </div>
 
+<!-- PWA Service Worker Registration -->
 <script>
-function toggleFaq(el){var a=el.classList.contains('active');document.querySelectorAll('.coze-faq-item').forEach(function(i){i.classList.remove('active')});if(!a)el.classList.add('active')}
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/static/sw.js').then(function(reg) {
+            console.log('SW registered:', reg.scope);
+            // Check for updates
+            reg.addEventListener('updatefound', function() {
+                var newWorker = reg.installing;
+                newWorker.addEventListener('statechange', function() {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        console.log('New SW available, refresh to update');
+                    }
+                });
+            });
+        }).catch(function(err) {
+            console.warn('SW registration failed:', err);
+        });
+    });
+}
+// PWA install prompt
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Show install button if available
+    var installBtn = document.getElementById('pwaInstallBtn');
+    if (installBtn) installBtn.style.display = 'flex';
+});
+function installPWA() {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function(choice) {
+        if (choice.outcome === 'accepted') {
+            showToast('DocAgent 已添加到桌面');
+        }
+        deferredPrompt = null;
+        var installBtn = document.getElementById('pwaInstallBtn');
+        if (installBtn) installBtn.style.display = 'none';
+    });
+}
 </script>
+
+<!-- FAQ Toggle Script -->
+<script>
+function toggleFaq(el) {
+    const isActive = el.classList.contains('active');
+    // Close all
+    document.querySelectorAll('.coze-faq-item').forEach(function(item) {
+        item.classList.remove('active');
+    });
+    // Toggle clicked
+    if (!isActive) {
+        el.classList.add('active');
+    }
+}
+</script>
+
+<!-- App Script -->
 <script src="/static/js/app.js"></script>
 </body>
 </html>
