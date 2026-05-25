@@ -66,7 +66,7 @@ public class MainActivity extends Activity {
     private static final String PREFS_NAME = "docagent_prefs";
     private static final String KEY_SERVER_URL = "server_url";
     private static final String KEY_FIRST_LAUNCH = "first_launch";
-    private static final String DEFAULT_URL = "";  // 首次启动由用户输入公网地址，如 http://123.45.67.89:8000
+    private static final String DEFAULT_URL = "http://47.114.99.132:8000";  // 服务器公网地址
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -90,14 +90,9 @@ public class MainActivity extends Activity {
         // Setup WebView
         setupWebView();
 
-        // Auto connect
-        String serverUrl = prefs.getString(KEY_SERVER_URL, "");
-        if (TextUtils.isEmpty(serverUrl)) {
-            // First launch - show config
-            showConfigScreen();
-        } else {
-            connectToServer(serverUrl);
-        }
+        // Auto connect - 首次启动自动连接默认服务器
+        String serverUrl = prefs.getString(KEY_SERVER_URL, DEFAULT_URL);
+        connectToServer(serverUrl);
     }
 
     /**
@@ -254,7 +249,7 @@ public class MainActivity extends Activity {
 
         // Server input
         serverInput = new EditText(this);
-        serverInput.setHint("http://你的公网IP:8000");
+        serverInput.setHint("http://服务器IP:端口");
         serverInput.setPadding(24, 16, 24, 16);
         serverInput.setBackgroundColor(Color.parseColor("#FFFFFF"));
         serverInput.setTextColor(Color.parseColor("#1A1A2E"));
@@ -307,7 +302,7 @@ public class MainActivity extends Activity {
 
         // Hint
         TextView hint = new TextView(this);
-        hint.setText("提示：请输入服务器的公网IP地址\n格式：http://公网IP:8000\n例如：http://123.45.67.89:8000");
+        hint.setText("默认服务器：http://47.114.99.132:8000\n如需更换服务器，请输入新地址");
         hint.setTextSize(12);
         hint.setTextColor(Color.parseColor("#999999"));
         hint.setGravity(android.view.Gravity.CENTER);
@@ -327,7 +322,8 @@ public class MainActivity extends Activity {
     private void showConfigScreen() {
         splashScreen.setVisibility(View.GONE);
         errorScreen.setVisibility(View.VISIBLE);
-        serverInput.setText(DEFAULT_URL);
+        String savedUrl = prefs.getString(KEY_SERVER_URL, DEFAULT_URL);
+        serverInput.setText(savedUrl);
     }
 
     /**

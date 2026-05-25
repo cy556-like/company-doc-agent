@@ -55,16 +55,17 @@
         <div class="splash-sub" id="splashSub">连接服务器中...</div>
         <div class="splash-error" id="splashError"></div>
         <div class="splash-config" id="splashConfig" style="display:none;">
-            <input type="text" id="serverUrl" placeholder="http://你的公网IP:8000" value="">
+            <input type="text" id="serverUrl" placeholder="http://服务器IP:端口" value="">
             <button onclick="connectServer()">连接服务器</button>
         </div>
         <div class="splash-hint" id="splashHint" style="display:none;">
-            请输入服务器公网IP地址<br>格式：http://公网IP:8000<br>例如：http://123.45.67.89:8000
+            默认服务器：http://47.114.99.132:8000<br>如需更换服务器，请输入新地址
         </div>
     </div>
     <script>
-        // 首次启动需用户输入公网地址，无需局域网
-        function getServerUrl() { return localStorage.getItem('docagent_server') || ''; }
+        // 默认服务器地址
+        var DEFAULT_SERVER = 'http://47.114.99.132:8000';
+        function getServerUrl() { return localStorage.getItem('docagent_server') || DEFAULT_SERVER; }
         function connectServer() {
             var url = document.getElementById('serverUrl').value.trim();
             if (!url) { alert('请输入服务器地址'); return; }
@@ -100,18 +101,12 @@
             document.getElementById('splashSub').textContent = '请配置服务器地址';
             document.getElementById('serverUrl').value = getServerUrl();
         }
-        // 启动时检查是否有已保存的地址
+        // 启动时自动连接默认服务器
         var savedUrl = getServerUrl();
-        if (savedUrl) {
-            // 有保存的地址，自动连接
-            document.getElementById('serverUrl').value = savedUrl;
-            fetch(savedUrl + '/api/v1/models', { method: 'GET' })
-                .then(function(resp) { if (resp.ok) loadApp(savedUrl); else showConfig('服务器返回错误'); })
-                .catch(function() { showConfig('自动连接失败，请检查服务器地址'); });
-        } else {
-            // 首次启动，显示配置界面
-            showConfig('欢迎使用 DocAgent，请输入服务器地址');
-        }
+        document.getElementById('serverUrl').value = savedUrl;
+        fetch(savedUrl + '/api/v1/models', { method: 'GET' })
+            .then(function(resp) { if (resp.ok) loadApp(savedUrl); else showConfig('服务器返回错误'); })
+            .catch(function() { showConfig('自动连接失败，请配置服务器地址'); });
     </script>
 </body>
 </html>
