@@ -184,8 +184,10 @@ def create_app() -> FastAPI:
     # 确保子目录存在
     css_dir = os.path.join(static_dir, "css")
     js_dir = os.path.join(static_dir, "js")
+    icons_dir = os.path.join(static_dir, "icons")
     os.makedirs(css_dir, exist_ok=True)
     os.makedirs(js_dir, exist_ok=True)
+    os.makedirs(icons_dir, exist_ok=True)
 
     # 确保下载文件目录存在（修改后的文档）
     modified_dir = os.path.join(static_dir, "modified")
