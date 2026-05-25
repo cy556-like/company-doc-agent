@@ -24,14 +24,17 @@
     --inline-code-bg: rgba(0,0,0,0.06);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
     --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
-    /* Coze-inspired warm palette */
-    --coze-warm-white: #F8F7F3;
-    --coze-beige: #F0EFE7;
-    --coze-morandi: #E0DFD6;
-    --coze-dark: #1A1A2E;
-    --coze-text: #555555;
-    --coze-text-light: #656565;
-    --coze-footer-bg: #F0EEE7;
+    /* Landing page colors */
+    --blue-600: #2563EB;
+    --blue-500: #3B82F6;
+    --blue-50: #EFF6FF;
+    --blue-100: #DBEAFE;
+    --slate-800: #1E293B;
+    --slate-600: #475569;
+    --slate-400: #94A3B8;
+    --slate-200: #E2E8F0;
+    --slate-100: #F1F5F9;
+    --slate-50: #F8FAFC;
 }
 
 /* ===== Dark Mode ===== */
@@ -64,31 +67,36 @@ body {
     overflow: hidden;
 }
 
-/* Serif font class (Coze style) */
+/* ============================================
+   LANDING PAGE - Coze.cn Inspired Style
+   ============================================ */
+
+/* Serif font class */
 .seri-font {
-    font-family: 'Noto Serif SC', 'Georgia', serif;
+    font-family: 'Noto Serif SC', 'Georgia', 'Times New Roman', serif;
 }
 
-/* ============================================
-   LANDING PAGE - Coze.cn Inspired
-   ============================================ */
 .landing-page {
     height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
-    background: var(--coze-warm-white);
+    background: #F8F7F3;
     scroll-behavior: smooth;
 }
+
+/* Hide landing page when logged in */
 .landing-page.login-hidden {
     display: none !important;
 }
 
-/* ===== Navigation (Frosted Glass) ===== */
+/* ===== Navigation (Coze style) ===== */
 .landing-nav {
     position: fixed;
-    top: 0; left: 0; right: 0;
+    top: 0;
+    left: 0;
+    right: 0;
     height: 64px;
-    background: rgba(248, 247, 243, 0.8);
+    background: rgba(248, 247, 243, 0.75);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid rgba(224, 223, 214, 0.5);
@@ -96,7 +104,7 @@ body {
     transition: box-shadow 0.3s;
 }
 .landing-nav.scrolled {
-    box-shadow: 0 1px 12px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
 }
 .nav-inner {
     max-width: 1200px;
@@ -116,7 +124,7 @@ body {
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: var(--coze-dark);
+    background: #1A1A2E;
     color: #fff;
     display: flex;
     align-items: center;
@@ -128,7 +136,7 @@ body {
 .nav-title {
     font-size: 20px;
     font-weight: 700;
-    color: var(--coze-dark);
+    color: #1A1A2E;
     letter-spacing: -0.3px;
 }
 .nav-links {
@@ -137,36 +145,74 @@ body {
 }
 .nav-link {
     text-decoration: none;
-    color: var(--coze-text);
+    color: #555;
     font-size: 14px;
     font-weight: 500;
     transition: color 0.2s;
+    position: relative;
 }
 .nav-link:hover {
-    color: var(--coze-dark);
+    color: #1A1A2E;
+}
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: #1A1A2E;
+    border-radius: 1px;
+    transition: width 0.2s;
+}
+.nav-link:hover::after {
+    width: 100%;
 }
 .nav-actions {
     display: flex;
     gap: 12px;
     align-items: center;
 }
+/* PWA Install Button */
+.btn-nav-install {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1.5px solid #1A1A2E;
+    border-radius: 8px;
+    color: #1A1A2E;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-nav-install:hover {
+    background: #1A1A2E;
+    color: #fff;
+}
+.btn-nav-install svg {
+    width: 16px;
+    height: 16px;
+}
 .btn-nav-login {
     padding: 8px 20px;
     background: transparent;
     border: none;
     border-radius: 8px;
-    color: var(--coze-dark);
+    color: #1A1A2E;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
 }
 .btn-nav-login:hover {
-    background: rgba(26,26,46,0.06);
+    background: rgba(26, 26, 46, 0.06);
 }
 .btn-nav-trial {
     padding: 8px 20px;
-    background: var(--coze-dark);
+    background: #1A1A2E;
     border: none;
     border-radius: 8px;
     color: #fff;
@@ -176,17 +222,20 @@ body {
     transition: all 0.2s;
 }
 .btn-nav-trial:hover {
-    background: #2a2a44;
-    box-shadow: 0 2px 8px rgba(26,26,46,0.2);
+    background: #2d2d4a;
+    box-shadow: 0 2px 8px rgba(26, 26, 46, 0.3);
+}
+.btn-nav-trial:active {
+    transform: translateY(1px);
 }
 
-/* ===== Hero Section ===== */
+/* ===== Hero Section (Coze "Hello, Agent World" style) ===== */
 .hero-section {
     padding: 140px 32px 80px;
     min-height: 100vh;
     display: flex;
     align-items: center;
-    background: var(--coze-warm-white);
+    background: #F8F7F3;
 }
 .hero-inner {
     max-width: 1200px;
@@ -201,36 +250,37 @@ body {
     min-width: 0;
 }
 .hero-title {
-    font-size: 52px;
+    font-size: 56px;
     font-weight: 700;
-    color: var(--coze-dark);
-    line-height: 1.2;
-    letter-spacing: -1px;
+    color: #1A1A2E;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
     margin-bottom: 16px;
 }
 .hero-subtitle {
     font-size: 20px;
-    font-weight: 500;
-    color: var(--coze-dark);
+    color: #1A1A2E;
+    font-weight: 600;
     margin-bottom: 16px;
     line-height: 1.4;
 }
 .hero-desc {
     font-size: 16px;
-    color: var(--coze-text);
+    color: #656565;
     line-height: 1.8;
-    margin-bottom: 32px;
-    max-width: 500px;
+    margin-bottom: 36px;
+    max-width: 480px;
 }
 .hero-cta {
     display: flex;
     gap: 16px;
+    margin-bottom: 36px;
 }
 .btn-hero-primary {
-    padding: 14px 32px;
-    background: var(--coze-dark);
+    padding: 14px 36px;
+    background: #1A1A2E;
     border: none;
-    border-radius: 10px;
+    border-radius: 12px;
     color: #fff;
     font-size: 16px;
     font-weight: 600;
@@ -238,27 +288,30 @@ body {
     transition: all 0.2s;
 }
 .btn-hero-primary:hover {
-    background: #2a2a44;
+    background: #2d2d4a;
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(26,26,46,0.2);
+    box-shadow: 0 4px 16px rgba(26, 26, 46, 0.25);
+}
+.btn-hero-primary:active {
+    transform: translateY(1px);
 }
 .btn-hero-secondary {
-    padding: 14px 32px;
+    padding: 14px 36px;
     background: #fff;
-    border: 1.5px solid var(--coze-dark);
-    border-radius: 10px;
-    color: var(--coze-dark);
+    border: 1.5px solid #1A1A2E;
+    border-radius: 12px;
+    color: #1A1A2E;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
 }
 .btn-hero-secondary:hover {
-    background: var(--coze-warm-white);
-    box-shadow: 0 2px 8px rgba(26,26,46,0.08);
+    background: #1A1A2E;
+    color: #fff;
 }
 
-/* ===== Hero Demo Card ===== */
+/* Hero Demo Card (chat interface mockup) */
 .hero-visual {
     flex: 1;
     min-width: 0;
@@ -267,19 +320,19 @@ body {
 }
 .hero-demo-card {
     width: 100%;
-    max-width: 480px;
+    max-width: 500px;
     background: #fff;
     border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+    box-shadow: 0 12px 48px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
     overflow: hidden;
 }
 .demo-card-header {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 12px 16px;
-    background: var(--coze-beige);
-    border-bottom: 1px solid var(--coze-morandi);
+    padding: 14px 18px;
+    background: #F8F7F3;
+    border-bottom: 1px solid #E0DFD6;
 }
 .demo-dot {
     width: 10px;
@@ -290,48 +343,58 @@ body {
     margin-left: 8px;
     font-size: 13px;
     font-weight: 600;
-    color: var(--coze-dark);
+    color: #1A1A2E;
 }
 .demo-card-body {
     padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 .demo-msg {
     padding: 10px 14px;
     border-radius: 12px;
     font-size: 13px;
+    line-height: 1.6;
     max-width: 85%;
-    line-height: 1.5;
-    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
 }
 .demo-msg-user {
-    background: var(--coze-beige);
-    color: var(--coze-dark);
-    margin-left: auto;
+    background: #F0EFE7;
+    color: #1A1A2E;
+    align-self: flex-end;
     border-bottom-right-radius: 4px;
 }
 .demo-msg-ai {
-    background: var(--coze-warm-white);
-    color: var(--coze-text);
+    background: #F8F7F3;
+    color: #555;
+    align-self: flex-start;
     border-bottom-left-radius: 4px;
+    border: 1px solid #E0DFD6;
+}
+.demo-msg-ai svg {
+    flex-shrink: 0;
+    margin-top: 2px;
 }
 .demo-tools {
     display: flex;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 4px;
 }
 .demo-tool {
     padding: 5px 12px;
-    background: var(--coze-warm-white);
-    border: 1px solid var(--coze-morandi);
-    border-radius: 6px;
+    background: #F8F7F3;
+    border: 1px solid #E0DFD6;
+    border-radius: 8px;
     font-size: 11px;
-    color: var(--coze-text);
+    color: #656565;
 }
 .demo-tool-active {
-    background: var(--coze-morandi);
-    border-color: transparent;
-    color: var(--coze-dark);
-    font-weight: 500;
+    background: #1A1A2E;
+    color: #fff;
+    border-color: #1A1A2E;
 }
 
 /* ===== Section Common ===== */
@@ -347,70 +410,73 @@ body {
 .section-title {
     font-size: 36px;
     font-weight: 700;
-    color: var(--coze-dark);
+    color: #1A1A2E;
     margin-bottom: 12px;
     letter-spacing: -0.5px;
 }
 .section-desc {
     font-size: 16px;
-    color: var(--coze-text);
+    color: #656565;
     max-width: 560px;
     margin: 0 auto;
     line-height: 1.7;
 }
 
-/* ===== Core Features (4 cols) ===== */
+/* ===== Core Features (4-col, Coze style) ===== */
 .coze-features-section {
-    padding: 80px 0;
-    background: var(--coze-warm-white);
+    padding: 40px 0 128px;
+    background: #F8F7F3;
 }
 .coze-features-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 24px;
+    gap: 20px;
 }
 .coze-feature-card {
-    padding: 32px 24px;
-    background: #fff;
+    padding: 32px 24px 28px;
+    background: #F8F7F3;
+    border: 1px solid #E0DFD6;
     border-radius: 16px;
     transition: all 0.3s;
-    border: 1px solid rgba(224,223,214,0.5);
 }
 .coze-feature-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+    border-color: #ccc;
 }
 .coze-feature-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 .coze-feature-title {
     font-size: 18px;
-    font-weight: 600;
-    color: var(--coze-dark);
+    font-weight: 700;
+    color: #1A1A2E;
     margin-bottom: 10px;
 }
 .coze-feature-desc {
     font-size: 14px;
-    color: var(--coze-text);
+    color: #656565;
     line-height: 1.7;
 }
 
-/* ===== Agent Capabilities ===== */
+/* ===== Agent Capabilities Section (Coze SVG map style) ===== */
 .coze-capabilities-section {
-    padding: 80px 0;
-    background: var(--coze-beige);
+    padding: 40px 0 128px;
+    background: #F0EFE7;
 }
 .coze-capabilities-map {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 40px;
+    padding: 48px 0;
 }
 .cap-center {
     display: flex;
@@ -421,38 +487,37 @@ body {
 .cap-center-icon {
     width: 72px;
     height: 72px;
-    border-radius: 50%;
-    background: var(--coze-dark);
+    border-radius: 20px;
+    background: #1A1A2E;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 .cap-center-label {
     font-size: 16px;
-    font-weight: 600;
-    color: var(--coze-dark);
+    font-weight: 700;
+    color: #1A1A2E;
 }
 .cap-nodes {
     display: flex;
-    gap: 24px;
     flex-wrap: wrap;
+    gap: 20px;
     justify-content: center;
+    max-width: 700px;
 }
 .cap-node {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 20px 16px;
-    background: #fff;
+    gap: 10px;
+    padding: 12px 20px;
+    background: #F8F7F3;
+    border: 1px solid #E0DFD6;
     border-radius: 16px;
-    min-width: 100px;
-    border: 1px solid rgba(224,223,214,0.5);
     transition: all 0.2s;
 }
 .cap-node:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
 }
 .cap-node-icon {
     width: 40px;
@@ -461,17 +526,19 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 .cap-node span {
-    font-size: 13px;
-    color: var(--coze-dark);
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1A1A2E;
+    white-space: nowrap;
 }
 
-/* ===== Scenarios (6 cards) ===== */
+/* ===== Scenarios Section (Morandi warm gray cards) ===== */
 .coze-scenarios-section {
-    padding: 80px 0;
-    background: var(--coze-warm-white);
+    padding: 40px 0 128px;
+    background: #F8F7F3;
 }
 .coze-scenarios-grid {
     display: grid;
@@ -480,82 +547,86 @@ body {
 }
 .coze-scenario-card {
     padding: 28px 24px;
-    background: var(--coze-morandi);
+    background: #E0DFD6;
     border-radius: 16px;
     transition: all 0.3s;
 }
 .coze-scenario-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
 }
 .coze-scenario-icon {
     margin-bottom: 14px;
 }
 .coze-scenario-title {
     font-size: 16px;
-    font-weight: 600;
-    color: var(--coze-dark);
+    font-weight: 700;
+    color: #1A1A2E;
     margin-bottom: 8px;
 }
 .coze-scenario-desc {
     font-size: 13px;
-    color: var(--coze-text);
+    color: #656565;
     line-height: 1.7;
 }
 
-/* ===== FAQ Accordion ===== */
+/* ===== FAQ Section (Coze accordion) ===== */
 .coze-faq-section {
-    padding: 80px 0;
-    background: var(--coze-beige);
+    padding: 40px 0 128px;
+    background: #F0EFE7;
 }
 .coze-faq-layout {
     display: flex;
-    gap: 60px;
+    gap: 64px;
     align-items: flex-start;
 }
 .coze-faq-left {
-    min-width: 200px;
+    flex-shrink: 0;
+    width: 280px;
     position: sticky;
-    top: 100px;
+    top: 120px;
 }
 .coze-faq-title {
-    font-size: 48px;
+    font-size: 36px;
     font-weight: 700;
-    color: var(--coze-dark);
+    color: #1A1A2E;
     margin-bottom: 12px;
+    letter-spacing: -0.5px;
 }
 .coze-faq-subtitle {
     font-size: 15px;
-    color: var(--coze-text);
+    color: #656565;
+    line-height: 1.6;
 }
 .coze-faq-right {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 .coze-faq-item {
-    background: var(--coze-morandi);
+    background: #E0DFD6;
     border-radius: 16px;
-    padding: 20px 24px;
     cursor: pointer;
     transition: all 0.2s;
+    overflow: hidden;
 }
 .coze-faq-item:hover {
-    background: #D5D4CB;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
 }
 .coze-faq-q {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    font-size: 16px;
-    font-weight: 500;
-    color: var(--coze-dark);
+    justify-content: space-between;
+    padding: 20px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1A1A2E;
 }
 .coze-faq-arrow {
-    transition: transform 0.3s;
     flex-shrink: 0;
-    margin-left: 12px;
+    transition: transform 0.3s;
 }
 .coze-faq-item.active .coze-faq-arrow {
     transform: rotate(180deg);
@@ -563,24 +634,22 @@ body {
 .coze-faq-a {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease, margin-top 0.3s ease, opacity 0.3s ease;
-    opacity: 0;
+    transition: max-height 0.3s ease, padding 0.3s ease;
 }
 .coze-faq-item.active .coze-faq-a {
     max-height: 200px;
-    margin-top: 12px;
-    opacity: 1;
+    padding: 0 24px 20px;
 }
 .coze-faq-a p {
     font-size: 14px;
-    color: var(--coze-text);
-    line-height: 1.75;
+    color: #656565;
+    line-height: 1.7;
 }
 
-/* ===== Bottom CTA ===== */
+/* ===== Bottom CTA Section ===== */
 .coze-cta-section {
-    padding: 100px 32px;
-    background: var(--coze-dark);
+    padding: 80px 32px;
+    background: #1A1A2E;
     text-align: center;
 }
 .coze-cta-inner {
@@ -595,17 +664,17 @@ body {
     letter-spacing: -0.5px;
 }
 .coze-cta-desc {
-    font-size: 17px;
-    color: rgba(255,255,255,0.7);
+    font-size: 16px;
+    color: rgba(255,255,255,0.6);
     margin-bottom: 36px;
     line-height: 1.7;
 }
 .coze-cta-btn {
-    padding: 14px 36px;
+    padding: 14px 40px;
     background: #fff;
     border: none;
-    border-radius: 10px;
-    color: var(--coze-dark);
+    border-radius: 12px;
+    color: #1A1A2E;
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
@@ -613,13 +682,14 @@ body {
 }
 .coze-cta-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 20px rgba(255,255,255,0.2);
 }
 
-/* ===== Footer ===== */
+/* ===== Footer (Coze style) ===== */
 .coze-footer {
-    padding: 24px 32px;
-    background: var(--coze-footer-bg);
+    padding: 32px;
+    background: #F0EEE7;
+    border-top: 1px solid #E0DFD6;
 }
 .coze-footer-inner {
     max-width: 1200px;
@@ -627,38 +697,39 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 16px;
 }
 .coze-footer-brand {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--coze-dark);
+    color: #1A1A2E;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 16px;
 }
 .coze-footer-logo {
     width: 28px;
     height: 28px;
-    font-size: 13px;
-    border-radius: 7px;
+    font-size: 14px;
+    border-radius: 8px;
+}
+.coze-footer-name {
+    color: #1A1A2E;
 }
 .coze-footer-links {
     display: flex;
     gap: 24px;
 }
 .coze-footer-links a {
-    color: rgba(32,41,69,0.62);
+    color: #656565;
     text-decoration: none;
     font-size: 13px;
     transition: color 0.2s;
 }
 .coze-footer-links a:hover {
-    color: var(--coze-dark);
+    color: #1A1A2E;
 }
 .coze-footer-copy {
-    color: rgba(32,41,69,0.5);
+    color: #999;
     font-size: 13px;
 }
 
@@ -669,7 +740,7 @@ body {
     display: none;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(26, 26, 46, 0.4);
+    background: rgba(15, 23, 42, 0.5);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     z-index: 2000;
@@ -694,12 +765,14 @@ body {
 }
 .modal-close-btn {
     position: absolute;
-    top: 16px; right: 16px;
-    width: 32px; height: 32px;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
     border: none;
-    background: var(--coze-warm-white);
+    background: var(--slate-50);
     border-radius: 8px;
-    color: var(--coze-text-light);
+    color: var(--slate-400);
     font-size: 20px;
     cursor: pointer;
     display: flex;
@@ -709,8 +782,8 @@ body {
     z-index: 1;
 }
 .modal-close-btn:hover {
-    background: var(--coze-morandi);
-    color: var(--coze-dark);
+    background: var(--slate-100);
+    color: var(--slate-800);
 }
 .login-modal-inner {
     padding: 40px 36px 36px;
@@ -720,9 +793,10 @@ body {
     margin-bottom: 28px;
 }
 .login-logo {
-    width: 48px; height: 48px;
+    width: 48px;
+    height: 48px;
     border-radius: 14px;
-    background: var(--coze-dark);
+    background: #1A1A2E;
     color: #fff;
     display: flex;
     align-items: center;
@@ -735,17 +809,17 @@ body {
 .login-modal-header h3 {
     font-size: 22px;
     font-weight: 700;
-    color: var(--coze-dark);
+    color: var(--slate-800);
     margin-bottom: 6px;
 }
 .login-subtitle {
     font-size: 14px;
-    color: var(--coze-text-light);
+    color: var(--slate-400);
 }
 .login-modal-body .tab-bar {
     display: flex;
     margin-bottom: 24px;
-    background: var(--coze-warm-white);
+    background: var(--slate-50);
     border-radius: 10px;
     padding: 4px;
 }
@@ -754,7 +828,7 @@ body {
     text-align: center;
     padding: 10px;
     cursor: pointer;
-    color: var(--coze-text-light);
+    color: var(--slate-400);
     border-radius: 8px;
     transition: all 0.2s;
     font-size: 14px;
@@ -763,12 +837,12 @@ body {
     border-bottom: none;
 }
 .login-modal-body .tab.active {
-    color: var(--coze-dark);
+    color: var(--slate-800);
     background: #fff;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 .login-modal-body .tab:hover:not(.active) {
-    color: var(--coze-text);
+    color: var(--slate-600);
 }
 .login-modal-body .form-group {
     margin-bottom: 16px;
@@ -777,32 +851,32 @@ body {
     display: block;
     margin-bottom: 6px;
     font-size: 13px;
-    color: var(--coze-text);
+    color: var(--slate-600);
     font-weight: 500;
 }
 .login-modal-body .form-group input {
     width: 100%;
     padding: 12px 14px;
-    background: var(--coze-warm-white);
-    border: 1px solid var(--coze-morandi);
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
     border-radius: 10px;
-    color: var(--coze-dark);
+    color: var(--slate-800);
     font-size: 14px;
     outline: none;
     transition: border 0.2s, box-shadow 0.2s;
 }
 .login-modal-body .form-group input:focus {
-    border-color: var(--coze-dark);
-    box-shadow: 0 0 0 3px rgba(26,26,46,0.08);
+    border-color: #1A1A2E;
+    box-shadow: 0 0 0 3px rgba(26, 26, 46, 0.1);
     background: #fff;
 }
 .login-modal-body .form-group input::placeholder {
-    color: var(--coze-text-light);
+    color: var(--slate-400);
 }
 .btn-login {
     width: 100%;
     padding: 12px;
-    background: var(--coze-dark);
+    background: #1A1A2E;
     border: none;
     border-radius: 10px;
     color: #fff;
@@ -813,8 +887,8 @@ body {
     margin-top: 4px;
 }
 .btn-login:hover {
-    background: #2a2a44;
-    box-shadow: 0 2px 8px rgba(26,26,46,0.2);
+    background: #2d2d4a;
+    box-shadow: 0 2px 8px rgba(26, 26, 46, 0.3);
 }
 .btn-login:active {
     transform: translateY(1px);
