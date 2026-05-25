@@ -985,6 +985,9 @@ body {
 .sidebar.collapsed .sidebar-footer { justify-content: center; padding: 10px 0; }
 .sidebar.collapsed .sidebar-footer .user-avatar { width: 28px; height: 28px; font-size: 11px; }
 .sidebar.collapsed .chat-search { display: none; }
+.sidebar.collapsed .sidebar-brand { justify-content: center; padding: 4px 0; }
+.sidebar.collapsed .sidebar-brand .sidebar-brand-name { display: none; }
+.sidebar.collapsed .sidebar-brand .sidebar-brand-icon { width: 28px; height: 28px; }
 
 .sidebar-header {
     padding: 12px;
@@ -992,6 +995,29 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 4px 4px 6px;
+    transition: all 0.3s;
+}
+.sidebar-brand-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    object-fit: cover;
+}
+.sidebar-brand-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .new-chat-btn {
     width: 100%;
