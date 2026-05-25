@@ -270,7 +270,7 @@ async function doLogin() {
             if (data.token) { authToken = data.token; localStorage.setItem('authToken', data.token); }
             msgEl.className = 'msg-box success'; msgEl.textContent = '登录成功！';
             setTimeout(() => {
-                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('loginPage').classList.add('login-hidden');
                 document.getElementById('chatPage').style.display = 'flex';
                 document.getElementById('sidebarUsername').textContent = username;
                 document.getElementById('sidebarAvatar').textContent = username[0].toUpperCase();
@@ -298,7 +298,7 @@ function doLogout() {
     currentUser = null; authToken = null; selectedFile = null; currentChatId = null; allChats = []; chatModeChatIds = { chat: null, agent: null };
     localStorage.removeItem('authToken');
     document.getElementById('chatPage').style.display = 'none';
-    document.getElementById('loginPage').style.display = 'flex';
+    document.getElementById('loginPage').classList.remove('login-hidden');
     document.getElementById('chatMessages').innerHTML = '';
     document.getElementById('loginUser').value = '';
     document.getElementById('loginPass').value = '';
@@ -314,7 +314,7 @@ async function tryAutoLogin() {
         if (data.valid && data.username) {
             currentUser = data.username;
             authToken = token;
-            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('loginPage').classList.add('login-hidden');
             document.getElementById('chatPage').style.display = 'flex';
             document.getElementById('sidebarUsername').textContent = data.username;
             document.getElementById('sidebarAvatar').textContent = data.username[0].toUpperCase();
