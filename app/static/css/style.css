@@ -196,6 +196,33 @@ body {
     width: 16px;
     height: 16px;
 }
+/* Download APP Button (Nav) */
+.btn-nav-download {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1.5px solid #1A1A2E;
+    border-radius: 8px;
+    color: #1A1A2E;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+.btn-nav-download:hover {
+    background: #1A1A2E;
+    color: #fff;
+}
+.btn-nav-download:hover svg {
+    stroke: #fff;
+}
+.btn-nav-download svg {
+    width: 16px;
+    height: 16px;
+}
 .btn-nav-login {
     padding: 8px 20px;
     background: transparent;
@@ -669,6 +696,12 @@ body {
     margin-bottom: 36px;
     line-height: 1.7;
 }
+.coze-cta-btns {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
 .coze-cta-btn {
     padding: 14px 40px;
     background: #fff;
@@ -679,10 +712,27 @@ body {
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 .coze-cta-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 20px rgba(255,255,255,0.2);
+}
+.coze-cta-btn-app {
+    background: transparent;
+    border: 1.5px solid rgba(255,255,255,0.4);
+    color: #fff;
+}
+.coze-cta-btn-app:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.7);
+}
+.coze-cta-btn-app svg {
+    width: 18px;
+    height: 18px;
 }
 
 /* ===== Footer (Coze style) ===== */

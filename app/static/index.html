@@ -54,6 +54,10 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     安装App
                 </button>
+                <a class="btn-nav-download" href="/static/DocAgent.apk" download="DocAgent.apk" aria-label="下载APP">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                    下载APP
+                </a>
                 <button class="btn-nav-login" onclick="openLoginModal()" aria-label="登录">登录</button>
                 <button class="btn-nav-trial" onclick="openTrialModal()" aria-label="免费开始">免费开始</button>
             </div>
@@ -313,7 +317,13 @@
         <div class="coze-cta-inner">
             <h2 class="coze-cta-title seri-font">企业文档，就用 DocAgent</h2>
             <p class="coze-cta-desc">5 分钟开通，零代码部署，立即体验智能文档管理的全新方式</p>
-            <button class="coze-cta-btn" onclick="openTrialModal()">免费开始使用</button>
+            <div class="coze-cta-btns">
+                <button class="coze-cta-btn" onclick="openTrialModal()">免费开始使用</button>
+                <a class="coze-cta-btn coze-cta-btn-app" href="/static/DocAgent.apk" download="DocAgent.apk">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                    下载 Android APP
+                </a>
+            </div>
         </div>
     </section>
 
