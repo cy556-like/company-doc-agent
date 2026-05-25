@@ -1,0 +1,4 @@
+/home/z/my-project/company-doc-agent/android-app/build-manual/obj/com/docagent/app/MainActivity$DocAgentChromeClient.class
+/home/z/my-project/company-doc-agent/android-app/build-manual/obj/com/docagent/app/DocAgentApp.class
+/home/z/my-project/company-doc-agent/android-app/build-manual/obj/com/docagent/app/MainActivity.class
+/home/z/my-project/company-doc-agent/android-app/build-manual/obj/com/docagent/app/MainActivity$DocAgentWebViewClient.class
