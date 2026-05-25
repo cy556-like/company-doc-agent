@@ -1,11 +1,24 @@
 #!/bin/sh
-# Gradle wrapper script
+# Gradle wrapper script - uses JAVA_HOME environment variable
 
 APP_BASE_NAME=`basename "$0"`
 APP_HOME=`pwd -P`
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
-exec /home/z/jdk17/bin/java \
+# Use JAVA_HOME if set, otherwise try to find java in PATH
+if [ -n "$JAVA_HOME" ] ; then
+    JAVACMD="$JAVA_HOME/bin/java"
+else
+    JAVACMD="java"
+fi
+
+# Check if java exists
+if ! command -v "$JAVACMD" > /dev/null 2>&1 ; then
+    echo "ERROR: JAVA_HOME is not set and java could not be found in PATH."
+    exit 1
+fi
+
+exec "$JAVACMD" \
   -classpath "$CLASSPATH" \
   org.gradle.wrapper.GradleWrapperMain \
   "$@"

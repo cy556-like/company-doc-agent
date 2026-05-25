@@ -31,14 +31,15 @@ jobs:
       - name: Build Debug APK
         working-directory: android-app
         run: |
-          # 创建 local.properties 指向 Android SDK
+          # Override local.properties with the correct SDK path for CI
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          # 构建
           ./gradlew assembleDebug
 
       - name: Build Release APK (unsigned)
         working-directory: android-app
-        run: ./gradlew assembleRelease
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          ./gradlew assembleRelease
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
