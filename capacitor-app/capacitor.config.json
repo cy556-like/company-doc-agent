@@ -1,0 +1,39 @@
+{
+    "appId": "com.docagent.app",
+    "appName": "DocAgent",
+    "webDir": "www",
+    "server": {
+        "androidScheme": "https",
+        "cleartext": true
+    },
+    "plugins": {
+        "SplashScreen": {
+            "launchShowDuration": 2000,
+            "launchAutoHide": true,
+            "backgroundColor": "#F8F7F3",
+            "showSpinner": true,
+            "spinnerColor": "#1A1A2E",
+            "androidScaleType": "CENTER_CROP"
+        },
+        "StatusBar": {
+            "style": "LIGHT",
+            "backgroundColor": "#F8F7F3"
+        },
+        "Keyboard": {
+            "resize": "body",
+            "resizeOnFullScreen": true
+        },
+        "Network": {
+            "addEventListener": true
+        }
+    },
+    "android": {
+        "buildOptions": {
+            "keystorePath": "",
+            "keystoreAlias": "",
+            "keystorePassword": "",
+            "keystoreAliasPassword": ""
+        },
+        "allowMixedContent": true
+    }
+}
