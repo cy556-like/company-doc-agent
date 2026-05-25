@@ -19,6 +19,9 @@ let deepThinkEnabled = false;
 let currentMode = 'agent';
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
+// 每个模式独立记录当前会话ID，切换模式时恢复
+let modeChatId = { agent: null, chat: null };
+
 // ===== API Helper (with JWT Token) =====
 function apiHeaders() {
     const headers = { 'Content-Type': 'application/json' };
@@ -62,6 +65,11 @@ function toggleWebSearch() {
 
 // ===== Mode Switch =====
 function switchMode(mode) {
+    if (currentMode === mode) return; // 避免重复切换
+
+    // 保存当前模式的会话ID
+    modeChatId[currentMode] = currentChatId;
+
     currentMode = mode;
     localStorage.setItem('chatMode', mode);
 
@@ -92,11 +100,19 @@ function switchMode(mode) {
             ? '智能驱动，高效协同。随时为您解答疑问、处理事务，让工作更简单。'
             : '通用对话模式，深度思考更精准。随时为您解答各类问题。';
     }
+
+    // 切换模式后：加载该模式的历史对话列表，并恢复上次的会话
+    loadChatList();
 }
 
 (function initMode() {
     const saved = localStorage.getItem('chatMode');
-    if (saved === 'chat') switchMode('chat');
+    if (saved === 'chat') {
+        currentMode = 'chat'; // 先设值，避免 switchMode 的重复切换守卫
+        localStorage.setItem('chatMode', 'chat');
+        document.getElementById('modeChat').classList.add('active');
+        document.getElementById('modeAgent').classList.remove('active');
+    }
 })();
 
 // ===== Deep Think Toggle =====
@@ -323,6 +339,7 @@ async function doRegister() {
 
 function doLogout() {
     currentUser = null; authToken = null; selectedFile = null; currentChatId = null; allChats = [];
+    modeChatId = { agent: null, chat: null };
     localStorage.removeItem('authToken');
     document.getElementById('chatPage').style.display = 'none';
     document.getElementById('loginPage').classList.remove('login-hidden');
@@ -366,15 +383,29 @@ function updateCenteredMode() {
 async function loadChatList() {
     if (!currentUser) return;
     try {
-        const resp = await fetch(`/api/v1/chats?username=${encodeURIComponent(currentUser)}`, { headers: apiHeaders() });
+        // 按 currentMode 过滤，只显示当前模式的会话
+        const resp = await fetch(`/api/v1/chats?username=${encodeURIComponent(currentUser)}&mode=${currentMode}`, { headers: apiHeaders() });
         const data = await resp.json();
         if (data.success) {
             allChats = data.chats;
             renderChatList();
+            // 恢复该模式上次打开的会话，或选第一个
+            const savedChatId = modeChatId[currentMode];
             if (allChats.length === 0) {
                 await createNewChat();
-            } else if (!currentChatId) {
-                switchChat(allChats[0].chat_id);
+            } else if (savedChatId && allChats.some(c => c.chat_id === savedChatId)) {
+                // 恢复上次在该模式下的会话
+                if (currentChatId !== savedChatId) {
+                    currentChatId = savedChatId;
+                    renderChatList();
+                    await loadChatHistory(savedChatId);
+                }
+            } else if (!currentChatId || !allChats.some(c => c.chat_id === currentChatId)) {
+                // 当前没有会话或当前会话不属于该模式，切到第一个
+                currentChatId = allChats[0].chat_id;
+                modeChatId[currentMode] = currentChatId;
+                renderChatList();
+                await loadChatHistory(currentChatId);
             }
         }
     } catch (e) { console.error('加载会话列表失败', e); }
@@ -408,10 +439,12 @@ function renderChatList() {
 async function createNewChat() {
     if (!currentUser) return;
     try {
-        const resp = await fetch(`/api/v1/chats?username=${encodeURIComponent(currentUser)}&title=${encodeURIComponent('新对话')}`, { method: 'POST', headers: apiHeaders() });
+        // 创建新会话时传入当前模式，确保会话归属于正确的模式
+        const resp = await fetch(`/api/v1/chats?username=${encodeURIComponent(currentUser)}&title=${encodeURIComponent('新对话')}&mode=${currentMode}`, { method: 'POST', headers: apiHeaders() });
         const data = await resp.json();
         if (data.success) {
             currentChatId = data.chat.chat_id;
+            modeChatId[currentMode] = currentChatId;
             await loadChatList();
             clearChatUI();
             closeSidebarOnMobile();
@@ -422,6 +455,7 @@ async function createNewChat() {
 async function switchChat(chatId) {
     if (chatId === currentChatId) return;
     currentChatId = chatId;
+    modeChatId[currentMode] = chatId; // 记录当前模式的活跃会话
     renderChatList();
     await loadChatHistory(chatId);
 }
@@ -447,6 +481,7 @@ async function deleteChatItem(chatId) {
         await fetch(`/api/v1/chats/${chatId}?username=${encodeURIComponent(currentUser)}`, { method: 'DELETE', headers: apiHeaders() });
         if (chatId === currentChatId) {
             currentChatId = null;
+            modeChatId[currentMode] = null;
             clearChatUI();
         }
         await loadChatList();
