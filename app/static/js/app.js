@@ -65,7 +65,10 @@ function toggleWebSearch() {
 
 // ===== Mode Switch =====
 function switchMode(mode) {
-    if (currentMode === mode) return; // 避免重复切换
+    if (currentMode === mode) return;
+
+    // 保存当前模式的 chatId
+    modeChatId[currentMode] = currentChatId;
 
     currentMode = mode;
     localStorage.setItem('chatMode', mode);
@@ -98,8 +101,35 @@ function switchMode(mode) {
             : '通用对话模式，深度思考更精准。随时为您解答各类问题。';
     }
 
-    // 切换模式不切换对话列表，保持当前对话窗口不变
-    // mode 只影响发送消息时的后端处理链
+    // 切换模式时：筛选该模式的历史对话，恢复该模式上次的会话
+    renderChatList();
+    restoreModeChat();
+}
+
+// 恢复当前模式上次的活跃会话，如果没有则新建
+async function restoreModeChat() {
+    const modeChats = getModeChats();
+    const savedId = modeChatId[currentMode];
+    if (modeChats.length === 0) {
+        // 该模式没有会话，新建一个
+        await createNewChat();
+    } else if (savedId && modeChats.some(c => c.chat_id === savedId)) {
+        // 恢复上次该模式的会话
+        currentChatId = savedId;
+        renderChatList();
+        await loadChatHistory(savedId);
+    } else {
+        // 选择该模式的第一个会话
+        currentChatId = modeChats[0].chat_id;
+        modeChatId[currentMode] = currentChatId;
+        renderChatList();
+        await loadChatHistory(currentChatId);
+    }
+}
+
+// 获取当前模式的会话列表
+function getModeChats() {
+    return allChats.filter(chat => chat.mode === currentMode || (!chat.mode && currentMode === 'agent'));
 }
 
 (function initMode() {
@@ -379,17 +409,18 @@ function updateCenteredMode() {
 async function loadChatList() {
     if (!currentUser) return;
     try {
-        // 不按 mode 过滤，显示所有会话（chat/agent 共享对话列表）
         const resp = await fetch(`/api/v1/chats?username=${encodeURIComponent(currentUser)}`, { headers: apiHeaders() });
         const data = await resp.json();
         if (data.success) {
             allChats = data.chats;
             renderChatList();
-            // 如果没有会话则创建，否则恢复或选第一个
-            if (allChats.length === 0) {
+            // 按当前模式恢复会话
+            const modeChats = getModeChats();
+            if (modeChats.length === 0) {
                 await createNewChat();
-            } else if (!currentChatId || !allChats.some(c => c.chat_id === currentChatId)) {
-                currentChatId = allChats[0].chat_id;
+            } else if (!currentChatId || !modeChats.some(c => c.chat_id === currentChatId)) {
+                currentChatId = modeChats[0].chat_id;
+                modeChatId[currentMode] = currentChatId;
                 renderChatList();
                 await loadChatHistory(currentChatId);
             }
@@ -400,7 +431,9 @@ async function loadChatList() {
 function renderChatList() {
     const list = document.getElementById('chatList');
     list.innerHTML = '';
-    allChats.forEach(chat => {
+    // 只显示当前模式的会话
+    const modeChats = getModeChats();
+    modeChats.forEach(chat => {
         const item = document.createElement('div');
         item.className = `chat-item${chat.chat_id === currentChatId ? ' active' : ''}`;
         item.onclick = (e) => {
@@ -425,11 +458,11 @@ function renderChatList() {
 async function createNewChat() {
     if (!currentUser) return;
     try {
-        // 创建新会话时传入当前模式
         const resp = await fetch(`/api/v1/chats?username=${encodeURIComponent(currentUser)}&title=${encodeURIComponent('新对话')}&mode=${currentMode}`, { method: 'POST', headers: apiHeaders() });
         const data = await resp.json();
         if (data.success) {
             currentChatId = data.chat.chat_id;
+            modeChatId[currentMode] = currentChatId;
             await loadChatList();
             clearChatUI();
             closeSidebarOnMobile();
@@ -440,6 +473,7 @@ async function createNewChat() {
 async function switchChat(chatId) {
     if (chatId === currentChatId) return;
     currentChatId = chatId;
+    modeChatId[currentMode] = chatId;
     renderChatList();
     await loadChatHistory(chatId);
 }
@@ -465,9 +499,15 @@ async function deleteChatItem(chatId) {
         await fetch(`/api/v1/chats/${chatId}?username=${encodeURIComponent(currentUser)}`, { method: 'DELETE', headers: apiHeaders() });
         if (chatId === currentChatId) {
             currentChatId = null;
+            modeChatId[currentMode] = null;
             clearChatUI();
         }
         await loadChatList();
+        // 如果当前模式没有会话了，新建一个
+        const modeChats = getModeChats();
+        if (modeChats.length === 0) {
+            await createNewChat();
+        }
     } catch (e) { console.error('删除会话失败', e); }
 }
 
