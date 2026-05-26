@@ -23,7 +23,7 @@ from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
 
 from app.agent.core import chat, chat_stream_generator, chat_stream_generator_multimodal, reset_agent
-from app.rag.document import index_document, search_documents, list_indexed_documents, delete_document
+from app.rag.document import index_document, search_documents, list_indexed_documents, delete_document, update_document
 from app.auth.user_manager import login_user, register_user
 from app.auth.jwt_handler import create_token, verify_token, get_username_from_token
 from app.memory.manager import (
@@ -154,6 +154,12 @@ class ConfigUpdateRequest(BaseModel):
     """配置更新请求"""
     key: str  # 配置项名称，如 LLM_MODEL, MAX_TOOL_ROUNDS 等
     value: str  # 新值（字符串形式，内部转换）
+
+
+class ModifyDocumentRequest(BaseModel):
+    """修改知识库文档请求"""
+    content: str  # 新的文档内容（纯文本）
+    append: bool = False  # 是否追加内容（True=在原文末尾追加，False=替换全部内容）
 
 
 # ===== 认证接口 =====
@@ -446,6 +452,41 @@ async def list_documents(
         "page_size": page_size,
         "total_pages": (total + page_size - 1) // page_size,
     }
+
+
+@router.put("/documents/{filename}", summary="修改知识库文档内容")
+async def modify_document_api(filename: str, req: ModifyDocumentRequest):
+    """
+    修改知识库中指定文档的内容
+    支持两种模式：
+    - 替换模式（append=false）：用新内容完全替换原文档内容
+    - 追加模式（append=true）：在原文档内容末尾追加新内容
+    修改后会自动重新索引到向量数据库
+    """
+    # 检查文档是否存在
+    file_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail=f"文档 {filename} 不存在")
+
+    # 追加模式：先读取原内容，拼接新内容
+    final_content = req.content
+    if req.append:
+        try:
+            from app.rag.document import load_document
+            docs = load_document(file_path)
+            original_text = "\n".join([doc.page_content for doc in docs])
+            final_content = original_text + "\n" + req.content
+        except Exception as e:
+            logger.warning(f"读取原文档内容失败，改为替换模式: {e}")
+
+    logger.info(f"知识库修改文档: {filename}, 追加模式={req.append}, 内容长度={len(final_content)}")
+
+    result = update_document(filename, final_content)
+    if result["status"] == "not_found":
+        raise HTTPException(status_code=404, detail=result["message"])
+    if result["status"] == "error":
+        raise HTTPException(status_code=500, detail=result["message"])
+    return {"status": "success", "detail": result}
 
 
 @router.delete("/documents/{filename}", summary="从知识库删除文档")

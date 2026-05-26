@@ -34,6 +34,7 @@ SYSTEM_PROMPT = """# 角色
 | 文档列表 | 列出知识库中所有可搜索的文档 | list_documents_tool |
 | 文档上传 | 将新文档索引到知识库 | upload_document_tool |
 | 文档删除 | 从知识库中移除指定文档 | delete_document_tool |
+| 文档修改 | 修改知识库中已有文档的内容（支持追加或替换） | modify_document_tool |
 | GitHub操作 | 读取/列出/更新 GitHub 仓库文件 | github_api_tool |
 | 发送邮件 | 发送电子邮件通知 | send_email_tool |
 | 数据库查询 | 执行 SQL 只读查询，获取业务数据 | database_query_tool |
@@ -45,6 +46,7 @@ SYSTEM_PROMPT = """# 角色
 - 用户问**「制度」「流程」「规范」「政策」「规定」** → 用 **search_documents_tool**
 - 用户问**「有哪些部门」「部门列表」** → 用 **list_departments_tool**
 - 用户问**「有哪些文档」「文档列表」「知识库有什么」** → 用 **list_documents_tool**
+- 用户问**「修改文档」「添加内容到文档」「在文档里加上」「编辑知识库文件」** → 用 **modify_document_tool**
 - 用户问**「GitHub」「代码」「仓库」「推送」** → 用 **github_api_tool**
 - 用户问**「发邮件」「通知」「邮件」** → 用 **send_email_tool**
 - 用户问**「销售额」「库存」「订单」「数据库」** → 用 **database_query_tool**
@@ -57,6 +59,7 @@ SYSTEM_PROMPT = """# 角色
 ├─ 公司制度/流程/规范的具体内容 → search_documents_tool
 ├─ 知识库文档列表 → list_documents_tool
 ├─ 上传/删除文档 → upload_document_tool / delete_document_tool
+├─ 修改/编辑知识库文档内容（添加、修改、替换文档中的文字）→ modify_document_tool
 ├─ GitHub 仓库操作（查看/更新代码）→ github_api_tool
 ├─ 发邮件通知 → send_email_tool
 ├─ 数据库查询（订单/库存/销售等业务数据）→ database_query_tool
@@ -81,6 +84,17 @@ SYSTEM_PROMPT = """# 角色
 - 「帮我把这个改动推到GitHub」→ github_api_tool(action="update", repo="...", path="...", content="...", token="用户提供的token")
 - 「给技术部发邮件通知」→ lookup_employee_tool(department="技术") → send_email_tool(to="...", subject="...", body="...")
 - 「查一下本月销售额」→ database_query_tool(query="SELECT ... FROM ...")
+
+### modify_document_tool 使用规则（重要！）
+- **追加内容**（用户说"添加""加上""追加"）：modify_document_tool(filename="xxx.docx", content="要添加的内容", append=True)
+- **替换全部内容**（用户说"修改""改为""替换"）：modify_document_tool(filename="xxx.docx", content="完整的新内容", append=False)
+- **修改流程**：
+  1. 先用 list_documents_tool 确认文件名是否存在
+  2. 如果需要修改文档中的某一部分（而非追加），先用 search_documents_tool 读取当前内容
+  3. 基于当前内容构造完整的新内容
+  4. 调用 modify_document_tool 提交修改
+- ⚠️ 替换模式（append=False）会用新内容覆盖整个文档，请确保传入的是完整内容，而非仅修改的部分
+- ⚠️ 文件名必须包含扩展名，且与知识库中完全一致
 
 ### GitHub 读取文件规则
 - 查看文件内容：github_api_tool(action="read", ...) — 大文件自动截断到8000字
@@ -172,6 +186,7 @@ SYSTEM_PROMPT_WITH_WEB_SEARCH = """# 角色
 | 文档列表 | 列出知识库中所有可搜索的文档 | list_documents_tool |
 | 文档上传 | 将新文档索引到知识库 | upload_document_tool |
 | 文档删除 | 从知识库中移除指定文档 | delete_document_tool |
+| 文档修改 | 修改知识库中已有文档的内容（支持追加或替换） | modify_document_tool |
 | 联网搜索 | 搜索互联网获取最新资讯、实时数据等 | web_search_tool |
 | GitHub操作 | 读取/列出/更新 GitHub 仓库文件 | github_api_tool |
 | 发送邮件 | 发送电子邮件通知 | send_email_tool |
@@ -194,6 +209,7 @@ SYSTEM_PROMPT_WITH_WEB_SEARCH = """# 角色
 - 用户问**「员工」「人员」「谁」** → 用 **lookup_employee_tool**
 - 用户问**「制度」「流程」「规范」** → 用 **search_documents_tool**
 - 用户问**「最新」「今天」「实时」「新闻」** → 用 **web_search_tool**
+- 用户问**「修改文档」「添加内容到文档」「编辑知识库文件」** → 用 **modify_document_tool**
 - 用户问**「GitHub」「代码」「仓库」** → 用 **github_api_tool**
 - 用户问**「发邮件」「通知」** → 用 **send_email_tool**
 - 用户问**「销售额」「库存」「订单」** → 用 **database_query_tool**
@@ -206,6 +222,7 @@ SYSTEM_PROMPT_WITH_WEB_SEARCH = """# 角色
 ├─ 公司制度/流程/规范 → search_documents_tool
 ├─ 知识库文档列表 → list_documents_tool
 ├─ 上传/删除文档 → upload_document_tool / delete_document_tool
+├─ 修改/编辑知识库文档内容 → modify_document_tool
 ├─ 最新资讯、实时数据 → web_search_tool
 ├─ GitHub 仓库操作 → github_api_tool
 ├─ 发邮件通知 → send_email_tool
@@ -306,6 +323,7 @@ TOOL_DISPLAY_NAMES = {
     "list_documents_tool": "文档列表",
     "upload_document_tool": "上传文档",
     "delete_document_tool": "删除文档",
+    "modify_document_tool": "修改文档",
     "web_search_tool": "联网搜索",
     "github_api_tool": "GitHub操作",
     "send_email_tool": "发送邮件",

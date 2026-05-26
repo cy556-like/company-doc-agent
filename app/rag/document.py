@@ -328,6 +328,102 @@ def list_indexed_documents() -> list[str]:
         return []
 
 
+def update_document(filename: str, new_content: str) -> dict:
+    """
+    修改知识库中已有文档的内容
+    流程：删除旧的向量分块 → 用新内容覆盖原文件 → 重新索引
+
+    Args:
+        filename: 要修改的文档文件名
+        new_content: 新的文档内容（纯文本）
+
+    Returns:
+        dict: 包含修改状态和详细信息
+    """
+    # 1. 检查文件是否存在
+    file_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+    if not os.path.exists(file_path):
+        return {
+            "filename": filename,
+            "status": "not_found",
+            "message": f"文档 {filename} 在服务器上未找到",
+        }
+
+    vector_store = get_vector_store()
+    collection = vector_store._collection
+
+    # 2. 删除旧的向量分块
+    chunks_deleted = 0
+    try:
+        results = collection.get(
+            where={"source_file": filename},
+            include=["metadatas"],
+        )
+        chunk_ids = results.get("ids", [])
+        if chunk_ids:
+            collection.delete(ids=chunk_ids)
+            chunks_deleted = len(chunk_ids)
+    except Exception as e:
+        logger.warning(f"删除旧向量分块时出错: {e}")
+
+    # 3. 用新内容覆盖原文件
+    try:
+        ext = os.path.splitext(filename)[1].lower()
+        if ext == ".txt":
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(new_content)
+        elif ext == ".docx":
+            # 对于 docx 文件，用 python-docx 生成新文档
+            try:
+                from docx import Document as DocxDocument
+                doc = DocxDocument()
+                # 按换行分段写入
+                for line in new_content.split("\n"):
+                    doc.add_paragraph(line)
+                doc.save(file_path)
+            except ImportError:
+                # 如果没有 python-docx，回退为纯文本写入
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(new_content)
+        elif ext == ".pdf":
+            # PDF 不支持直接修改内容，回退为纯文本写入（改扩展名为 .txt）
+            txt_path = file_path.rsplit('.', 1)[0] + '.txt'
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write(new_content)
+            # 删除原 PDF 文件
+            os.remove(file_path)
+            filename = filename.rsplit('.', 1)[0] + '.txt'
+            file_path = txt_path
+        else:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(new_content)
+    except Exception as e:
+        return {
+            "filename": filename,
+            "status": "error",
+            "message": f"写入文件失败: {str(e)}",
+        }
+
+    # 4. 重新索引
+    try:
+        index_result = index_document(file_path, filename)
+    except Exception as e:
+        return {
+            "filename": filename,
+            "status": "error",
+            "message": f"重新索引失败: {str(e)}",
+            "chunks_deleted": chunks_deleted,
+        }
+
+    return {
+        "filename": filename,
+        "status": "success",
+        "chunks_deleted": chunks_deleted,
+        "chunks_indexed": index_result.get("chunks", 0),
+        "message": f"文档 {filename} 已成功修改（删除 {chunks_deleted} 个旧分块，重新索引 {index_result.get('chunks', 0)} 个新分块）",
+    }
+
+
 def delete_document(filename: str) -> dict:
     """
     从知识库中删除指定文档

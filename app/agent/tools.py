@@ -20,7 +20,7 @@ from functools import wraps
 from langchain_core.tools import tool
 
 from app.config import settings
-from app.rag.document import search_documents, index_document, list_indexed_documents, delete_document
+from app.rag.document import search_documents, index_document, list_indexed_documents, delete_document, update_document
 
 logger = logging.getLogger(__name__)
 
@@ -402,6 +402,47 @@ def delete_document_tool(filename: str) -> str:
         return f"【删除失败】{str(e)}"
 
 
+@tool
+def modify_document_tool(filename: str, content: str, append: bool = False) -> str:
+    """修改知识库中已有文档的内容。支持替换全部内容或在原文末尾追加内容。
+
+    【用途】当用户要求修改、编辑、更新知识库中某个文档的内容时使用。
+    【典型问题】「帮我在xxx文件中添加yyy」「把xxx文档里的zzz改成www」「修改知识库的xxx文件」
+    【重要】修改后会自动重新索引到向量数据库，无需手动操作。
+
+    Args:
+        filename: 要修改的文档文件名（含扩展名），需与知识库中的文件名完全一致。
+                  示例：「教务处归口管理的校外人员劳务费发放附页-zy.docx」
+        content: 新的内容。如果是追加模式，这是要追加到文档末尾的内容；如果是替换模式，这是文档的完整新内容。
+        append: 是否追加模式。True=在原文末尾追加内容，False=用新内容替换整个文档（默认False）。
+                一般情况下，用户说"添加""追加""加上"用追加模式；用户说"修改""改为""替换"用替换模式。
+    """
+    # 追加模式：先读取原文内容，拼接新内容
+    final_content = content
+    if append:
+        try:
+            file_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+            if os.path.exists(file_path):
+                from app.rag.document import load_document
+                docs = load_document(file_path)
+                original_text = "\n".join([doc.page_content for doc in docs])
+                final_content = original_text + "\n" + content
+            else:
+                return f"【修改失败】文档 \"{filename}\" 在服务器上未找到。可通过 list_documents_tool 查看当前文档列表。"
+        except Exception as e:
+            return f"【修改失败】读取原文档内容时出错: {str(e)}"
+
+    try:
+        result = update_document(filename, final_content)
+        if result["status"] == "not_found":
+            return f"【修改失败】文档 \"{filename}\" 在知识库中未找到。\n提示：请确认文件名是否正确（需包含扩展名），可通过 list_documents_tool 查看当前文档列表。"
+        if result["status"] == "error":
+            return f"【修改失败】{result['message']}"
+        return f"【修改成功】{result['message']}"
+    except Exception as e:
+        return f"【修改失败】{str(e)}"
+
+
 # ===== [#12] 外部系统集成工具 =====
 
 @tool
@@ -671,6 +712,7 @@ BASE_TOOLS = [
     list_documents_tool,
     upload_document_tool,
     delete_document_tool,
+    modify_document_tool,
 ]
 
 # 联网搜索工具（按需启用）
