@@ -1,4 +1,4 @@
-# 企业智能助手 Agent
+# 企业智能助手 Agent2
 
 这是一个基于 **LangChain + LangGraph + FastAPI + ChromaDB** 的企业文档智能问答系统，采用 **ReAct Agent** 模式。
 
@@ -36,5 +36,3 @@ app/
 └── static/          # 前端界面
 ```
 简单来说，这就是**一个企业级的 AI 智能助手系统**，我就是运行在这个项目上的！😄
-
-（来源：[GitHub - cy556-like/company-doc-agent](https://github.com/cy556-like/company-doc-agent)）
