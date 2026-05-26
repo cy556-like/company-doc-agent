@@ -932,13 +932,7 @@ function copyMessage(btn) {
     // 获取纯文本，排除代码块复制按钮的文字
     let text = bubble.innerText || bubble.textContent || '';
     // 去除代码块中的"复制"/"已复制"文字
-    text = text.replace(/
-?复制
-?/g, '
-').replace(/
-?已复制
-?/g, '
-').trim();
+    text = text.replace(/\n?复制\n?/g, '\n').replace(/\n?已复制\n?/g, '\n').trim();
     if (!text) { showToast('复制失败：内容为空'); return; }
     copyToClipboard(text, () => { showToast('已复制到剪贴板'); }, () => { showToast('复制失败，请手动复制'); });
 }
