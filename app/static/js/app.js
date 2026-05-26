@@ -210,23 +210,33 @@ function showToast(msg, duration) {
 
 // ===== Clipboard =====
 function copyToClipboard(text, onSuccess, onFail) {
+    // 优先尝试 Clipboard API（需要 HTTPS 或 localhost）
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(() => {
             if (onSuccess) onSuccess();
         }).catch(() => {
             if (!fallbackCopy(text)) { if (onFail) onFail(); } else { if (onSuccess) onSuccess(); }
         });
-    } else {
-        if (!fallbackCopy(text)) { if (onFail) onFail(); } else { if (onSuccess) onSuccess(); }
+        return;
     }
+    // HTTP 环境：使用 fallback
+    if (!fallbackCopy(text)) { if (onFail) onFail(); } else { if (onSuccess) onSuccess(); }
 }
 
 function fallbackCopy(text) {
     try {
         const ta = document.createElement('textarea');
         ta.value = text;
-        ta.style.position = 'fixed'; ta.style.left = '-9999px'; ta.style.top = '-9999px'; ta.style.opacity = '0';
-        document.body.appendChild(ta); ta.focus(); ta.select();
+        ta.style.position = 'fixed';
+        ta.style.left = '0';
+        ta.style.top = '0';
+        ta.style.opacity = '0';
+        ta.style.pointerEvents = 'none';
+        ta.setAttribute('readonly', '');
+        ta.style.fontSize = '16px'; // 防止 iOS 缩放
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.setSelectionRange(0, ta.value.length);
         const ok = document.execCommand('copy');
         document.body.removeChild(ta);
         return ok;
@@ -916,9 +926,21 @@ function addMessageToUI(role, content, imageBase64) {
 
 // ===== Message Actions =====
 function copyMessage(btn) {
-    const bubble = btn.closest('.message').querySelector('.bubble');
-    const text = bubble.textContent || bubble.innerText;
-    copyToClipboard(text, () => { showToast('已复制到剪贴板'); }, () => { showToast('复制失败'); });
+    const messageDiv = btn.closest('.message');
+    const bubble = messageDiv ? messageDiv.querySelector('.bubble') : null;
+    if (!bubble) { showToast('复制失败：未找到消息内容'); return; }
+    // 获取纯文本，排除代码块复制按钮的文字
+    let text = bubble.innerText || bubble.textContent || '';
+    // 去除代码块中的"复制"/"已复制"文字
+    text = text.replace(/
+?复制
+?/g, '
+').replace(/
+?已复制
+?/g, '
+').trim();
+    if (!text) { showToast('复制失败：内容为空'); return; }
+    copyToClipboard(text, () => { showToast('已复制到剪贴板'); }, () => { showToast('复制失败，请手动复制'); });
 }
 
 async function regenerateMessage(btn) {
