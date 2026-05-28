@@ -328,7 +328,7 @@ def list_indexed_documents() -> list[str]:
         return []
 
 
-def update_document(filename: str, new_content: str) -> dict:
+def update_document(filename: str, new_content: str, agent_id: str = None, async_reindex: bool = False) -> dict:
     """
     修改知识库中已有文档的内容
     流程：删除旧的向量分块 → 用新内容覆盖原文件 → 重新索引
@@ -336,12 +336,21 @@ def update_document(filename: str, new_content: str) -> dict:
     Args:
         filename: 要修改的文档文件名
         new_content: 新的文档内容（纯文本）
+        agent_id: 智能体ID，为空时从全局知识库修改
 
     Returns:
         dict: 包含修改状态和详细信息
     """
-    # 1. 检查文件是否存在
-    file_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+    # 1. 检查文件是否存在 - 在per-agent子目录或全局目录中查找
+    if agent_id:
+        file_path = os.path.join(settings.DOCUMENTS_DIR, f"agent_{agent_id}", filename)
+    else:
+        file_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+    # Fallback: also try global dir if not found in agent dir
+    if not os.path.exists(file_path):
+        fallback_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+        if os.path.exists(fallback_path):
+            file_path = fallback_path
     if not os.path.exists(file_path):
         return {
             "filename": filename,
@@ -424,13 +433,14 @@ def update_document(filename: str, new_content: str) -> dict:
     }
 
 
-def delete_document(filename: str) -> dict:
+def delete_document(filename: str, agent_id: str = None) -> dict:
     """
     从知识库中删除指定文档
     包括：从 ChromaDB 删除向量分块 + 删除原始文件
 
     Args:
         filename: 要删除的文档文件名
+        agent_id: 智能体ID，为空时从全局知识库删除
 
     Returns:
         dict: 包含删除状态和详细信息
@@ -469,9 +479,17 @@ def delete_document(filename: str) -> dict:
             "message": f"从向量数据库删除失败: {str(e)}",
         }
 
-    # 3. 删除原始文件
+    # 3. 删除原始文件 - 在per-agent子目录中查找
     file_deleted = False
-    file_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+    if agent_id:
+        file_path = os.path.join(settings.DOCUMENTS_DIR, f"agent_{agent_id}", filename)
+    else:
+        file_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+    # Fallback: also try global dir if not found in agent dir
+    if not os.path.exists(file_path):
+        fallback_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+        if os.path.exists(fallback_path):
+            file_path = fallback_path
     if os.path.exists(file_path):
         try:
             os.remove(file_path)
