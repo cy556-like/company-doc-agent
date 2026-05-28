@@ -149,7 +149,7 @@ def _save_user_chats(username: str, chats: list[dict]) -> None:
         json.dump(chats, f, ensure_ascii=False, indent=2)
 
 
-def create_chat(username: str, title: str = "新对话", mode: str = "agent") -> dict:
+def create_chat(username: str, title: str = "新对话", mode: str = "agent", agent_id: str = None) -> dict:
     """
     为用户创建一个新的会话
 
@@ -166,6 +166,7 @@ def create_chat(username: str, title: str = "新对话", mode: str = "agent") ->
         "chat_id": chat_id,
         "title": title,
         "mode": mode,
+        "agent_id": agent_id or "",
         "created_at": time.time(),
         "updated_at": time.time(),
     }
