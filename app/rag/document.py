@@ -510,3 +510,66 @@ def delete_document(filename: str, agent_id: str = None) -> dict:
         "status": "success",
         "message": f"文档 {filename} 已成功删除（{len(chunk_ids)} 个分块，原始文件{'已删除' if file_deleted else '不存在'}）",
     }
+
+
+def export_document_as_docx(filename: str, agent_id: str = None) -> str:
+    """将知识库文档导出为DOCX格式，返回临时文件路径"""
+    if agent_id:
+        file_path = os.path.join(settings.DOCUMENTS_DIR, f"agent_{agent_id}", filename)
+    else:
+        file_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+
+    if not os.path.exists(file_path):
+        # Fallback to global dir
+        file_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"文档 {filename} 不存在")
+
+    # If already docx, return as-is
+    if filename.lower().endswith('.docx'):
+        return file_path
+
+    # For other formats, read content and create a docx
+    try:
+        from docx import Document
+        doc = Document()
+        # Read the original file content
+        docs = load_document(file_path)
+        for d in docs:
+            doc.add_paragraph(d.page_content)
+        # Save to temp file
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        export_name = os.path.splitext(filename)[0] + '.docx'
+        temp_path = os.path.join(temp_dir, export_name)
+        doc.save(temp_path)
+        return temp_path
+    except ImportError:
+        # python-docx not available, return original file
+        return file_path
+    except Exception as e:
+        logger.warning(f"导出DOCX失败: {e}")
+        return file_path
+
+
+def get_document_content(filename: str, agent_id: str = None) -> str:
+    """获取文档的文本内容"""
+    if agent_id:
+        file_path = os.path.join(settings.DOCUMENTS_DIR, f"agent_{agent_id}", filename)
+    else:
+        file_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+
+    if not os.path.exists(file_path):
+        # Fallback to global dir
+        file_path = os.path.join(settings.DOCUMENTS_DIR, filename)
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"文档 {filename} 不存在")
+
+    try:
+        docs = load_document(file_path)
+        return "\n\n".join([d.page_content for d in docs])
+    except Exception as e:
+        logger.warning(f"读取文档内容失败: {e}")
+        return ""
