@@ -573,3 +573,73 @@ def get_document_content(filename: str, agent_id: str = None) -> str:
     except Exception as e:
         logger.warning(f"读取文档内容失败: {e}")
         return ""
+
+
+def delete_agent_collection(agent_id: str) -> dict:
+    """删除智能体的整个知识库集合"""
+    try:
+        import chromadb
+        collection_name = _get_collection_name(agent_id)
+        client = chromadb.PersistentClient(path=settings.CHROMA_DIR)
+        try:
+            client.delete_collection(collection_name)
+        except ValueError:
+            pass
+        cache_key = agent_id or "__global__"
+        if cache_key in _vector_store_cache:
+            del _vector_store_cache[cache_key]
+        return {"status": "success", "message": f"已删除智能体 {agent_id} 的知识库"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def list_all_collections() -> list:
+    """列出所有ChromaDB集合名称"""
+    try:
+        import chromadb
+        client = chromadb.PersistentClient(path=settings.CHROMA_DIR)
+        collections = client.list_collections()
+        return [c.name for c in collections]
+    except Exception as e:
+        logger.warning(f"列出集合失败: {e}")
+        return []
+
+
+def reindex_all_documents(agent_id: str = None) -> dict:
+    """重新索引所有文档（可选按智能体）"""
+    try:
+        import chromadb
+        collection_name = _get_collection_name(agent_id)
+        client = chromadb.PersistentClient(path=settings.CHROMA_DIR)
+        try:
+            client.delete_collection(collection_name)
+        except ValueError:
+            pass
+        cache_key = agent_id or "__global__"
+        if cache_key in _vector_store_cache:
+            del _vector_store_cache[cache_key]
+        
+        if agent_id:
+            scan_dir = os.path.join(settings.DOCUMENTS_DIR, f"agent_{agent_id}")
+        else:
+            scan_dir = settings.DOCUMENTS_DIR
+        
+        if not os.path.exists(scan_dir):
+            return {"status": "success", "message": "没有找到文档目录", "indexed": 0}
+        
+        doc_extensions = {'.pdf', '.txt', '.docx', '.csv', '.xlsx', '.xls', '.doc', '.ppt', '.pptx', '.md'}
+        indexed = 0
+        for fname in os.listdir(scan_dir):
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in doc_extensions:
+                fpath = os.path.join(scan_dir, fname)
+                if os.path.isfile(fpath):
+                    try:
+                        result = index_document(fpath, fname, agent_id=agent_id)
+                        if result.get("status") == "success":
+                            indexed += 1
+                    except Exception as e:
+                        logger.warning(f"重新索引 {fname} 失败: {e}")
+        return {"status": "success", "message": f"已重新索引 {indexed} 个文档", "indexed": indexed}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
